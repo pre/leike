@@ -5,6 +5,7 @@ import { Clipboard } from './clipboard.ts';
 import { openPrefsOnFirstRun } from './first-run.ts';
 import { Injector } from './injector.ts';
 import { Keybindings } from './keybindings.ts';
+import { HistoryPopup } from './popup.ts';
 import { readSettings } from './settings.ts';
 import { HistoryStore } from './store.ts';
 import { Watcher } from './watcher.ts';
@@ -17,6 +18,7 @@ export default class LeikeExtension extends Extension {
   injector: Injector | null = null;
   private watcher: Watcher | null = null;
   private keybindings: Keybindings | null = null;
+  popup: HistoryPopup | null = null;
 
   override enable(): void {
     // GNOME Shell does not call disable() when enable() throws, so remove the parts that started.
@@ -29,6 +31,8 @@ export default class LeikeExtension extends Extension {
   }
 
   override disable(): void {
+    this.popup?.destroy();
+    this.popup = null;
     this.keybindings?.destroy();
     this.keybindings = null;
     this.injector?.destroy();
@@ -46,9 +50,9 @@ export default class LeikeExtension extends Extension {
     this.settings = null;
   }
 
-  /** The open-history shortcut calls this. The history popup replaces it. */
+  /** The open-history shortcut calls this. */
   openHistory(): void {
-    console.log('Leike: open history (no popup yet)');
+    this.popup?.open();
   }
 
   private start(): void {
@@ -62,6 +66,7 @@ export default class LeikeExtension extends Extension {
     this.clipboard = new Clipboard();
     this.watcher = new Watcher(this.clipboard, this.store, coreSettings);
     this.injector = new Injector(() => settings.get_strv('terminal-wm-classes'));
+    this.popup = new HistoryPopup({ store: this.store, clipboard: this.clipboard, injector: this.injector });
     this.keybindings = new Keybindings(settings, {
       copy: () => this.inject('copy'),
       paste: () => this.inject('paste'),
