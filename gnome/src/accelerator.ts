@@ -80,9 +80,11 @@ export function modifierLabelsOf(accelerator: string): string[] {
 /**
  * The shift level of a key press without AltGr. On a layout with a level 3
  * key, levels 2 and 3 (counted from 0) are the levels that AltGr selects.
+ * Higher levels come from other key types, for example Ctrl+Alt on the
+ * F keys, and are not AltGr.
  */
 export function withoutAltGrLevel(level: number): { altGr: boolean; level: number } {
-  return level >= 2 ? { altGr: true, level: level - 2 } : { altGr: false, level };
+  return level === 2 || level === 3 ? { altGr: true, level: level - 2 } : { altGr: false, level };
 }
 
 /** Adds <Mod5> (AltGr) to an accelerator that GTK named without it. */

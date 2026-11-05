@@ -87,6 +87,11 @@ describe('withoutAltGrLevel', () => {
     assert.deepEqual(withoutAltGrLevel(2), { altGr: true, level: 0 });
     assert.deepEqual(withoutAltGrLevel(3), { altGr: true, level: 1 });
   });
+
+  test('keeps the higher levels, for example Ctrl+Alt+F5 at level 4', () => {
+    assert.deepEqual(withoutAltGrLevel(4), { altGr: false, level: 4 });
+    assert.deepEqual(withoutAltGrLevel(5), { altGr: false, level: 5 });
+  });
 });
 
 describe('addAltGr', () => {
