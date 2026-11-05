@@ -8,7 +8,9 @@ Leike is in development and has no release yet.
 
 ## Screenshots
 
-Screenshots of the popup and the preferences window come here.
+![The Leike history popup](docs/screenshots/popup.png)
+
+The history popup shows the search entry and the type filter on top, the entries by day on the left, and the preview with the Information table on the right.
 
 ## Default shortcuts
 
@@ -19,7 +21,7 @@ Screenshots of the popup and the preferences window come here.
 | Cut           | Super+X                                         | Ctrl+X / Ctrl+Shift+X         |
 | Open history  | Super+AltGr+C (`<Super><Mod5>c`), Super+Alt+C   | opens the popup               |
 
-In the popup: Up and Down move, Enter copies, Shift+Enter copies and pastes, Delete removes the entry, Tab cycles the type filter, Escape closes. Typing filters. The mouse selects, and a double-click copies.
+In the popup: Up and Down move, Page Up and Page Down move by 10, Enter copies, Shift+Enter copies and pastes, Delete removes the entry, Ctrl+P pins or unpins the entry, Tab and Shift+Tab cycle the type filter, Escape closes. Typing filters. The mouse selects, a double-click copies, and a click outside the popup closes it.
 
 Leike sends Ctrl+Shift+C, V and X to a terminal and Ctrl+C, V and X to other windows. The WM_CLASS of the focused window selects the keys. The default terminal list is in the setting `terminal-wm-classes`: org.gnome.Terminal, gnome-terminal-server, org.gnome.Ptyxis, org.gnome.Console, Alacritty, kitty, foot, org.wezfurlong.wezterm, com.mitchellh.ghostty, Terminator and Tilix.
 
