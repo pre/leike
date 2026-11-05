@@ -3,7 +3,9 @@
 # from gnome/dist, without an install or a logout.
 #   prefs-dev.sh            uses the real dconf: changes apply to your session
 #   prefs-dev.sh --sandbox  uses a keyfile backend and a temporary
-#                           XDG_CONFIG_HOME under $HOME/tmp: nothing real changes
+#                           XDG_CONFIG_HOME and XDG_DATA_HOME under $HOME/tmp:
+#                           nothing real changes, and Clear history does not
+#                           touch the real history
 set -euo pipefail
 
 gnome_dir="$(cd "$(dirname "$0")" && pwd)"
@@ -38,10 +40,11 @@ export LD_LIBRARY_PATH="${typelib_dir%/girepository-1.0}${LD_LIBRARY_PATH:+:$LD_
 
 if [[ "$sandbox" == true ]]; then
   mkdir -p "$HOME/tmp"
-  config_home="$(mktemp -d "$HOME/tmp/leike-prefs-sandbox.XXXXXX")"
-  trap 'rm -rf "$config_home"' EXIT
-  echo "Sandbox: settings go to $config_home"
-  GSETTINGS_BACKEND=keyfile XDG_CONFIG_HOME="$config_home" \
+  sandbox_dir="$(mktemp -d "$HOME/tmp/leike-prefs-sandbox.XXXXXX")"
+  trap 'rm -rf "$sandbox_dir"' EXIT
+  mkdir -p "$sandbox_dir/config" "$sandbox_dir/data"
+  echo "Sandbox: settings go to $sandbox_dir/config, the history to $sandbox_dir/data"
+  GSETTINGS_BACKEND=keyfile XDG_CONFIG_HOME="$sandbox_dir/config" XDG_DATA_HOME="$sandbox_dir/data" \
     gjs -m "$gnome_dir/test/prefs-launcher.js" "$dist_dir"
 else
   gjs -m "$gnome_dir/test/prefs-launcher.js" "$dist_dir"
