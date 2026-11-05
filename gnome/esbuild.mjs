@@ -31,6 +31,7 @@ await build({
   ...shared,
   entryPoints: {
     core: '@leike/core',
+    'clear-history': 'src/clear-history.ts',
   },
   outdir: 'build',
   external: ['gi://*'],

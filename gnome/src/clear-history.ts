@@ -1,27 +1,31 @@
 import Gio from 'gi://Gio';
-import { historyFile, imagesDir } from './data-paths.ts';
+import { historyFile, imageFilesToDelete, imagesDir } from './data-paths.ts';
 
 /**
- * Deletes history.json and the files in images/. The preferences window
- * runs in its own process, so it cannot change the history of the
+ * Deletes history.json and the PNG files in images/. The preferences
+ * window runs in its own process, so it cannot change the history of the
  * extension in memory. The extension sees that history.json is gone and
  * empties its history.
  */
 export function clearHistory(userDataDir: string): void {
-  deleteIfExists(Gio.File.new_for_path(historyFile(userDataDir)));
+  const history = Gio.File.new_for_path(historyFile(userDataDir));
+  if (history.query_exists(null)) {
+    history.delete(null);
+  }
   const images = Gio.File.new_for_path(imagesDir(userDataDir));
-  if (!images.query_exists(null)) {
+  // A symbolic link to a directory outside the data directory is not followed.
+  if (images.query_file_type(Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null) !== Gio.FileType.DIRECTORY) {
     return;
   }
-  const children = images.enumerate_children('standard::name', Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+  const children = images.enumerate_children(
+    'standard::name,standard::type',
+    Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS,
+    null,
+  );
+  const entries = [];
   for (let info = children.next_file(null); info !== null; info = children.next_file(null)) {
-    deleteIfExists(images.get_child(info.get_name()));
+    entries.push({ name: info.get_name(), isRegularFile: info.get_file_type() === Gio.FileType.REGULAR });
   }
   children.close(null);
-}
-
-function deleteIfExists(file: Gio.File): void {
-  if (file.query_exists(null)) {
-    file.delete(null);
-  }
+  imageFilesToDelete(entries).forEach((name) => images.get_child(name).delete(null));
 }

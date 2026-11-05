@@ -20,3 +20,11 @@ export function imagesDir(userDataDir: string): string {
 export function imageFile(userDataDir: string, id: string): string {
   return `${imagesDir(userDataDir)}/${id}.png`;
 }
+
+/**
+ * The children of images/ that Clear history deletes: regular PNG files.
+ * Links, directories and other files stay.
+ */
+export function imageFilesToDelete(children: readonly { name: string; isRegularFile: boolean }[]): string[] {
+  return children.filter((child) => child.isRegularFile && /.\.png$/.test(child.name)).map((child) => child.name);
+}
