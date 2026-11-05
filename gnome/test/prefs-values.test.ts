@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { addWmClass, bytesToMiB, maxImageMiBRange, mibToBytes, removeWmClass } from '../src/prefs-values.ts';
+import {
+  addWmClass,
+  bytesToKiB,
+  bytesToMiB,
+  kibToBytes,
+  maxImageMiBRange,
+  maxTextKiBRange,
+  mibToBytes,
+  removeWmClass,
+} from '../src/prefs-values.ts';
 
 describe('image size', () => {
   test('converts the 10 MiB default both ways', () => {
@@ -14,6 +23,25 @@ describe('image size', () => {
 
   test('fits the largest size in the 32-bit gsettings integer', () => {
     assert.ok(mibToBytes(maxImageMiBRange.max) <= 2 ** 31 - 1);
+  });
+});
+
+describe('text size', () => {
+  test('converts the 1 MiB default to 1024 KiB and back', () => {
+    assert.equal(bytesToKiB(1048576), 1024);
+    assert.equal(kibToBytes(1024), 1048576);
+  });
+
+  test('rounds a size that is not a whole KiB', () => {
+    assert.equal(bytesToKiB(1500), 1);
+  });
+
+  test('has the 1 MiB default on a step of the range', () => {
+    assert.equal((bytesToKiB(1048576) - maxTextKiBRange.min) % maxTextKiBRange.step, 0);
+  });
+
+  test('fits the largest size in the 32-bit gsettings integer', () => {
+    assert.ok(kibToBytes(maxTextKiBRange.max) <= 2 ** 31 - 1);
   });
 });
 

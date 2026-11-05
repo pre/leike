@@ -7,9 +7,12 @@ import { historyFile } from './data-paths.ts';
 import { shortcutActions } from './key-names.ts';
 import {
   addWmClass,
+  bytesToKiB,
   bytesToMiB,
+  kibToBytes,
   maxEntriesRange,
   maxImageMiBRange,
+  maxTextKiBRange,
   mibToBytes,
   removeWmClass,
 } from './prefs-values.ts';
@@ -56,6 +59,32 @@ export function gnomeNoteGroup(): Adw.PreferencesGroup {
   return group;
 }
 
+/**
+ * A SpinRow that shows a byte setting in a larger unit. A plain bind cannot
+ * convert the value, so the row and the setting update each other.
+ */
+function sizeRow(
+  settings: Gio.Settings,
+  watch: Watch,
+  key: string,
+  range: { min: number; max: number; step: number },
+  fromBytes: (bytes: number) => number,
+  toBytes: (value: number) => number,
+): Adw.SpinRow {
+  const row = Adw.SpinRow.new_with_range(range.min, range.max, range.step);
+  const sync = (): void => {
+    row.value = fromBytes(settings.get_int(key));
+  };
+  sync();
+  watch(settings, `changed::${key}`, sync);
+  row.connect('notify::value', () => {
+    if (fromBytes(settings.get_int(key)) !== row.value) {
+      settings.set_int(key, toBytes(row.value));
+    }
+  });
+  return row;
+}
+
 export function historyPage(window: Adw.PreferencesWindow, settings: Gio.Settings, watch: Watch): Adw.PreferencesPage {
   const page = new Adw.PreferencesPage({ title: 'History', icon_name: 'document-open-recent-symbolic' });
 
@@ -65,21 +94,16 @@ export function historyPage(window: Adw.PreferencesWindow, settings: Gio.Setting
   maxEntries.subtitle = 'When the history is full, Leike removes the oldest entry that is not pinned';
   settings.bind('max-entries', maxEntries, 'value', Gio.SettingsBindFlags.DEFAULT);
 
-  const maxImage = Adw.SpinRow.new_with_range(maxImageMiBRange.min, maxImageMiBRange.max, maxImageMiBRange.step);
+  const maxImage = sizeRow(settings, watch, 'max-image-bytes', maxImageMiBRange, bytesToMiB, mibToBytes);
   maxImage.title = 'Maximum image size (MiB)';
   maxImage.subtitle = 'Leike does not keep a larger image';
-  const syncImage = (): void => {
-    maxImage.value = bytesToMiB(settings.get_int('max-image-bytes'));
-  };
-  syncImage();
-  watch(settings, 'changed::max-image-bytes', syncImage);
-  maxImage.connect('notify::value', () => {
-    if (bytesToMiB(settings.get_int('max-image-bytes')) !== maxImage.value) {
-      settings.set_int('max-image-bytes', mibToBytes(maxImage.value));
-    }
-  });
+
+  const maxText = sizeRow(settings, watch, 'max-text-bytes', maxTextKiBRange, bytesToKiB, kibToBytes);
+  maxText.title = 'Maximum text size (KiB)';
+  maxText.subtitle = 'Leike does not keep a larger text';
   limits.add(maxEntries);
   limits.add(maxImage);
+  limits.add(maxText);
   page.add(limits);
 
   const userDataDir = GLib.get_user_data_dir();

@@ -1,8 +1,18 @@
 /** The limits of the History page. */
 export const maxEntriesRange = { min: 10, max: 5000, step: 10 } as const;
 export const maxImageMiBRange = { min: 1, max: 1024, step: 1 } as const;
+export const maxTextKiBRange = { min: 64, max: 65536, step: 64 } as const;
 
+const bytesPerKiB = 1024;
 const bytesPerMiB = 1024 * 1024;
+
+export function bytesToKiB(bytes: number): number {
+  return Math.round(bytes / bytesPerKiB);
+}
+
+export function kibToBytes(kib: number): number {
+  return Math.round(kib) * bytesPerKiB;
+}
 
 export function bytesToMiB(bytes: number): number {
   return Math.round(bytes / bytesPerMiB);
