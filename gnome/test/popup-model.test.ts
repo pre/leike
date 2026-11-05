@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Entry, EntryType } from '@leike/core';
 import {
+  characterCount,
   colorCss,
   commandForKey,
   copiedLabel,
@@ -69,12 +70,21 @@ test('commandForKey maps the list keys', () => {
   assert.equal(commandForKey('Return', none), 'copy');
   assert.equal(commandForKey('KP_Enter', none), 'copy');
   assert.equal(commandForKey('Return', { shift: true, ctrl: false }), 'paste');
-  assert.equal(commandForKey('Delete', none), 'remove');
+  assert.equal(commandForKey('Delete', none, true), 'remove');
   assert.equal(commandForKey('Tab', none), 'next-type');
   assert.equal(commandForKey('ISO_Left_Tab', { shift: true, ctrl: false }), 'previous-type');
   assert.equal(commandForKey('Escape', none), 'close');
   assert.equal(commandForKey('p', { shift: false, ctrl: true }), 'toggle-pin');
   assert.equal(commandForKey('P', { shift: true, ctrl: true }), 'toggle-pin');
+});
+
+test('commandForKey removes an entry with Delete only when the search cursor is at the end', () => {
+  const none = { shift: false, ctrl: false };
+  assert.equal(commandForKey('Delete', none, true), 'remove');
+  assert.equal(commandForKey('KP_Delete', none, true), 'remove');
+  assert.equal(commandForKey('Delete', none, false), null);
+  assert.equal(commandForKey('KP_Delete', none, false), null);
+  assert.equal(commandForKey('Delete', none), null);
 });
 
 test('commandForKey leaves text keys to the search entry', () => {
@@ -164,6 +174,14 @@ test('PopupModel.setEntries keeps the position after the selected entry is remov
   assert.equal(model.selected, -1);
 });
 
+test('PopupModel.setEntries selects the first entry when nothing was selected', () => {
+  const model = new PopupModel([]);
+  assert.equal(model.selected, -1);
+  model.setEntries(entries(3));
+  assert.equal(model.selected, 0);
+  assert.equal(model.selectedEntry?.id, 'e0');
+});
+
 test('PopupModel.select ignores an index out of range', () => {
   const model = new PopupModel(entries(3));
   model.select(2);
@@ -199,6 +217,12 @@ test('rowTitle gives the first line that is not empty', () => {
   assert.equal(rowTitle(entry('a', 'text', { text: '\n\n  first line  \nsecond' })), 'first line');
   assert.equal(rowTitle(entry('a', 'text', { text: '   ' })), '');
   assert.equal(rowTitle(entry('a', 'text', { text: 'x'.repeat(500) })).length, 200);
+});
+
+test('rowTitle looks only at the start of a large text', () => {
+  const large = `${'\n'.repeat(5000)}hidden`;
+  assert.equal(rowTitle(entry('a', 'text', { text: large })), '');
+  assert.equal(rowTitle(entry('a', 'text', { text: `head\n${'x'.repeat(1_000_000)}` })), 'head');
 });
 
 test('rowTitle gives the file name and the number of other files', () => {
@@ -287,6 +311,15 @@ test('informationRows for a file list counts the files', () => {
   assert.deepEqual(rows[2], ['Size', '2 files']);
   assert.deepEqual(informationRows(entry('a', 'file', { text: 'file:///a' }), now, helsinki)[2], ['Size', '1 file']);
   assert.deepEqual(informationRows(entry('a', 'text', { text: 'x' }), now, helsinki)[2], ['Size', '1 character']);
+});
+
+test('characterCount counts code points and counts each entry once', () => {
+  const smile = entry('a', 'text', { text: 'a😀b' });
+  assert.equal(characterCount(smile), 3);
+  const cached = { ...smile };
+  assert.equal(characterCount(cached), 3);
+  (cached as { text: string }).text = 'changed after the first count';
+  assert.equal(characterCount(cached), 3);
 });
 
 test('fitSize scales down to fit and never scales up', () => {

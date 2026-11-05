@@ -11,6 +11,8 @@ export const renderChunk = 100;
 /** The preview shows at most this number of characters. */
 export const previewLimit = 10000;
 const titleLimit = 200;
+/** rowTitle looks for the first line in this many characters, so a large text does not slow down the list. */
+const titleScanLimit = 4096;
 
 const typeLabels: Record<EntryType, string> = { text: 'Text', link: 'Link', color: 'Color', file: 'File', image: 'Image' };
 
@@ -41,25 +43,28 @@ const plainKeys: Record<string, PopupCommand> = {
   KP_Page_Up: 'page-up',
   Page_Down: 'page-down',
   KP_Page_Down: 'page-down',
-  Delete: 'remove',
-  KP_Delete: 'remove',
   Tab: 'next-type',
   ISO_Left_Tab: 'previous-type',
   Escape: 'close',
 };
 
 const enterKeys = new Set(['Return', 'KP_Enter', 'ISO_Enter']);
+const deleteKeys = new Set(['Delete', 'KP_Delete']);
 
 /**
  * Gives the popup command for a key name (Clutter.keyval_name), or null for
- * a key that the search entry handles.
+ * a key that the search entry handles. Delete removes an entry only when
+ * searchCursorAtEnd is true; else it deletes text in the search entry.
  */
-export function commandForKey(key: string, mods: KeyModifiers): PopupCommand | null {
+export function commandForKey(key: string, mods: KeyModifiers, searchCursorAtEnd = false): PopupCommand | null {
   if (enterKeys.has(key)) {
     return mods.shift ? 'paste' : 'copy';
   }
   if (mods.ctrl) {
     return key.toLowerCase() === 'p' ? 'toggle-pin' : null;
+  }
+  if (deleteKeys.has(key)) {
+    return searchCursorAtEnd ? 'remove' : null;
   }
   return plainKeys[key] ?? null;
 }
@@ -94,7 +99,11 @@ export class PopupModel {
     this.all = entries;
     this.visible = filterEntries(this.all, this.query, this.type);
     const index = this.visible.findIndex((entry) => entry.id === id);
-    this.selected = index >= 0 ? index : Math.min(position, this.visible.length - 1);
+    if (index >= 0) {
+      this.selected = index;
+    } else {
+      this.selected = this.visible.length > 0 ? Math.max(0, Math.min(position, this.visible.length - 1)) : -1;
+    }
     this.renderToInclude(this.selected);
   }
 
@@ -197,7 +206,7 @@ export function rowTitle(entry: Entry): string {
     const first = baseName(uriToPath(uris[0] ?? ''));
     return uris.length > 1 ? `${first} and ${uris.length - 1} more` : first;
   }
-  const line = text.split('\n').find((item) => item.trim() !== '') ?? '';
+  const line = text.slice(0, titleScanLimit).split('\n').find((item) => item.trim() !== '') ?? '';
   return line.trim().slice(0, titleLimit);
 }
 
@@ -297,10 +306,17 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function characterCount(text: string): number {
-  let count = 0;
-  for (const _ of text) {
-    count += 1;
+const characterCounts = new WeakMap<Entry, number>();
+
+/** The number of code points in the text of the entry. Entries do not change, so each entry is counted once. */
+export function characterCount(entry: Entry): number {
+  let count = characterCounts.get(entry);
+  if (count === undefined) {
+    count = 0;
+    for (const _ of entry.text ?? '') {
+      count += 1;
+    }
+    characterCounts.set(entry, count);
   }
   return count;
 }
@@ -317,7 +333,7 @@ export function informationRows(entry: Entry, now: number, format: TimeFormat): 
   } else if (entry.type === 'file') {
     rows.push(['Size', plural(fileUris(entry.text ?? '').length, 'file')]);
   } else {
-    rows.push(['Size', plural(characterCount(entry.text ?? ''), 'character')]);
+    rows.push(['Size', plural(characterCount(entry), 'character')]);
   }
   rows.push(['Copied', copiedLabel(entry.createdAt, now, format)]);
   return rows;

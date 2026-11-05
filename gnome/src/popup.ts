@@ -127,8 +127,13 @@ export class HistoryPopup {
     });
     search.clutter_text.connect('key-press-event', (_actor, event: Clutter.Event) => this.onKeyPress(event));
 
-    this.refreshList();
     search.grab_key_focus();
+    try {
+      this.refreshList();
+    } catch (error) {
+      console.error(`Leike: cannot show the history popup: ${String(error)}`);
+      this.close();
+    }
   }
 
   close(): void {
@@ -148,15 +153,27 @@ export class HistoryPopup {
 
   private onKeyPress(event: Clutter.Event): boolean {
     const modifiers = event.get_state();
-    const command = commandForKey(Clutter.keyval_name(event.get_key_symbol()) ?? '', {
+    const mods = {
       shift: (modifiers & Clutter.ModifierType.SHIFT_MASK) !== 0,
       ctrl: (modifiers & Clutter.ModifierType.CONTROL_MASK) !== 0,
-    });
+    };
+    const command = commandForKey(Clutter.keyval_name(event.get_key_symbol()) ?? '', mods, this.searchCursorAtEnd());
     if (command === null) {
       return Clutter.EVENT_PROPAGATE;
     }
     this.run(command);
     return Clutter.EVENT_STOP;
+  }
+
+  /** True when Delete has no text to delete: no selection, and the cursor is after the last character. */
+  private searchCursorAtEnd(): boolean {
+    const text = this.state?.search.clutter_text;
+    if (!text || text.get_selection()) {
+      return false;
+    }
+    const position = text.get_cursor_position();
+    // The cursor position counts characters, and -1 is the end.
+    return position === -1 || position === [...text.get_text()].length;
   }
 
   private run(command: PopupCommand): void {
