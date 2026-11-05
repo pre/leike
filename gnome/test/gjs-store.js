@@ -5,7 +5,7 @@ import GLib from 'gi://GLib';
 import { clearHistory } from '../build/clear-history.js';
 import { HistoryStore } from '../build/store.js';
 
-const settings = { maxEntries: 3, maxImageBytes: 1000, terminalWmClasses: [], blocklistWmClasses: ['Blocked'] };
+const settings = { maxEntries: 3, maxImageBytes: 1000, maxTextBytes: 1000, terminalWmClasses: [], blocklistWmClasses: ['Blocked'] };
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -85,6 +85,7 @@ const blocked = store.addIncoming({ id: '104-0', text: 'secret', hash: sha256('s
 check('blocked app', blocked.rejected, 'blocked-app');
 const big = store.addIncoming({ id: '105-0', image: { width: 1, height: 1, bytes: 5000 }, hash: 'big', now: 105 }, pngBytes(2));
 check('image too large', big.rejected, 'image-too-large');
+check('text too large', store.addIncoming({ id: '105-1', text: 'x'.repeat(1001), hash: 'long', now: 105 }).rejected, 'text-too-large');
 settle(100);
 check('no file for the rejected image', exists(store.imagePath('105-0')), false);
 

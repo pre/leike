@@ -16,6 +16,7 @@ import {
 const settings: Settings = {
   maxEntries: 3,
   maxImageBytes: 1000,
+  maxTextBytes: 100,
   terminalWmClasses: [],
   blocklistWmClasses: ['KeePassXC'],
 };
@@ -180,6 +181,43 @@ test('addEntry rejects an image that is larger than the limit and reports its fi
   assert.equal(change.history, history);
   assert.equal(change.rejected, 'image-too-large');
   assert.deepEqual(change.deletedImageIds, ['big']);
+});
+
+test('addEntry rejects text whose UTF-8 size is larger than the limit', () => {
+  // Arrange: 51 characters, 101 UTF-8 bytes
+  const history = historyOf(textEntry('a', 100));
+  const incoming: Incoming = { id: 'long', text: `${'ä'.repeat(50)}!`, hash: 'h', now: 200 };
+
+  // Act
+  const change = addEntry(history, incoming, settings);
+
+  // Assert
+  assert.equal(change.history, history);
+  assert.equal(change.rejected, 'text-too-large');
+  assert.deepEqual(change.deletedImageIds, []);
+});
+
+test('addEntry counts 4 UTF-8 bytes for a character outside the BMP', () => {
+  // Arrange: 25 emoji of 4 bytes and 1 ASCII byte
+  const incoming: Incoming = { id: 'e', text: `${'😀'.repeat(25)}!`, hash: 'h', now: 1 };
+
+  // Act
+  const change = addEntry(emptyHistory, incoming, settings);
+
+  // Assert
+  assert.equal(change.rejected, 'text-too-large');
+});
+
+test('addEntry accepts text that is exactly at the byte limit', () => {
+  // Arrange: 100 UTF-8 bytes
+  const incoming: Incoming = { id: 't', text: 'ä'.repeat(50), hash: 'h', now: 1 };
+
+  // Act
+  const change = addEntry(emptyHistory, incoming, settings);
+
+  // Assert
+  assert.equal(change.rejected, undefined);
+  assert.deepEqual(ids(change.history), ['t']);
 });
 
 test('addEntry accepts an image that is exactly at the limit', () => {

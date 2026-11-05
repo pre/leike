@@ -2,7 +2,7 @@
 
 Status: accepted.
 
-The history keeps 500 entries by default (setting `max-entries`). When the history has more, the core removes the oldest entry that is not pinned. Leike does not keep an image that is larger than 10 MiB (setting `max-image-bytes`). When the user copies content that is already in the history, the core moves that entry to the top and sets its time to now. It does not add a second entry. The hash of the content identifies equal content.
+The history keeps 500 entries by default (setting `max-entries`). When the history has more, the core removes the oldest entry that is not pinned. Leike does not keep an image that is larger than 10 MiB (setting `max-image-bytes`) or a text that is larger than 1 MiB in UTF-8 (setting `max-text-bytes`). A large text makes each save and each load of history.json slow. When the user copies content that is already in the history, the core moves that entry to the top and sets its time to now. It does not add a second entry. The hash of the content identifies equal content.
 
 ## Consequences
 

@@ -48,6 +48,8 @@ export interface Incoming {
 export interface Settings {
   maxEntries: number;
   maxImageBytes: number;
+  /** The largest text in UTF-8 bytes. */
+  maxTextBytes: number;
   terminalWmClasses: readonly string[];
   blocklistWmClasses: readonly string[];
 }
@@ -56,9 +58,10 @@ export interface Settings {
  * Why addEntry did not store an incoming change:
  * - empty: no image, and no text or only whitespace
  * - image-too-large: the image is larger than Settings.maxImageBytes
+ * - text-too-large: the UTF-8 text is larger than Settings.maxTextBytes
  * - blocked-app: the app is on Settings.blocklistWmClasses
  */
-export type RejectReason = 'empty' | 'image-too-large' | 'blocked-app';
+export type RejectReason = 'empty' | 'image-too-large' | 'text-too-large' | 'blocked-app';
 
 /** A new history, and the images that the platform must delete from disk. */
 export interface HistoryChange {

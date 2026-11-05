@@ -6,6 +6,7 @@ export function readSettings(settings: Gio.Settings): Settings {
   return {
     maxEntries: settings.get_int('max-entries'),
     maxImageBytes: settings.get_int('max-image-bytes'),
+    maxTextBytes: settings.get_int('max-text-bytes'),
     terminalWmClasses: settings.get_strv('terminal-wm-classes'),
     blocklistWmClasses: settings.get_strv('blocklist-wm-classes'),
   };

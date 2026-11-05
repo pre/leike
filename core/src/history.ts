@@ -95,7 +95,16 @@ function rejectReason(incoming: Incoming, settings: Settings): HistoryChange['re
   if (incoming.text === undefined || incoming.text.trim() === '') {
     return 'empty';
   }
-  return undefined;
+  return utf8Length(incoming.text) > settings.maxTextBytes ? 'text-too-large' : undefined;
+}
+
+function utf8Length(text: string): number {
+  let bytes = 0;
+  for (const char of text) {
+    const code = char.codePointAt(0) ?? 0;
+    bytes += code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
+  }
+  return bytes;
 }
 
 function isBlocked(wmClass: string, blocklist: readonly string[]): boolean {
