@@ -8,7 +8,7 @@
   "scripts": {
     "build": "npm run typecheck && node esbuild.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
-    "test": "node --test \"test/**/*.test.ts\" && node esbuild.mjs && gjs -m test/gjs-smoke.js && gjs -m test/gjs-clear-history.js",
+    "test": "node --test \"test/**/*.test.ts\" && node esbuild.mjs && gjs -m test/gjs-smoke.js && gjs -m test/gjs-clear-history.js && test/gjs-store.sh",
     "pack": "./pack.sh",
     "reload": "./reload.sh",
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=\"src/**\" \"test/**/*.test.ts\"",
