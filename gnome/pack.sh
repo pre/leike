@@ -15,6 +15,6 @@ zip_file="$repo_dir/$uuid.zip"
 # port guide for GNOME 44 says not to ship gschemas.compiled.
 rm -f "$zip_file"
 (cd "$gnome_dir/dist" && zip -r -X "$zip_file" \
-  extension.js prefs.js metadata.json schemas LICENSE \
+  extension.js prefs.js metadata.json stylesheet.css schemas LICENSE \
   -x schemas/gschemas.compiled)
 echo "Wrote $zip_file"

@@ -39,6 +39,7 @@ await build({
 });
 
 cpSync('metadata.json', 'dist/metadata.json');
+cpSync('stylesheet.css', 'dist/stylesheet.css');
 cpSync('schemas', 'dist/schemas', { recursive: true });
 execFileSync('glib-compile-schemas', ['--strict', 'dist/schemas'], { stdio: 'inherit' });
 copyFileSync('../LICENSE', 'dist/LICENSE');
