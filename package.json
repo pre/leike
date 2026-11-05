@@ -1,0 +1,23 @@
+{
+  "name": "leike",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Clipboard history for GNOME with the flow of Raycast and Alfred",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "core",
+    "gnome"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace core --workspace gnome",
+    "test": "npm test --workspace core --workspace gnome",
+    "pack": "gnome/pack.sh",
+    "reload": "gnome/reload.sh",
+    "prefs": "gnome/prefs-dev.sh",
+    "prefs-sandbox": "gnome/prefs-dev.sh --sandbox"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

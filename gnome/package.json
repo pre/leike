@@ -1,0 +1,28 @@
+{
+  "name": "@leike/gnome",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Leike GNOME Shell extension",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "npm run typecheck && node esbuild.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "test": "node --test \"test/**/*.test.ts\" && node esbuild.mjs && gjs -m test/gjs-smoke.js",
+    "pack": "./pack.sh",
+    "reload": "./reload.sh",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=\"src/**\" \"test/**/*.test.ts\"",
+    "prefs": "./prefs-dev.sh",
+    "prefs-sandbox": "./prefs-dev.sh --sandbox"
+  },
+  "dependencies": {
+    "@leike/core": "0.1.0"
+  },
+  "devDependencies": {
+    "@girs/gjs": "4.0.0-beta.12",
+    "@girs/gnome-shell": "46.0.2",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3",
+    "@types/node": "22.20.5"
+  }
+}
