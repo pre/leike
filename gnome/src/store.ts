@@ -33,8 +33,10 @@ const encoder = new TextEncoder();
 
 /**
  * Keeps the history in memory and in history.json, and the image files in
- * images/<id>.png. Writes are debounced and atomic (Gio writes a temporary
- * file and renames it). A directory monitor reloads the history when another
+ * images/<id>.png. Writes are debounced and atomic: an asynchronous write
+ * goes to a temporary file, and the main loop renames it only while the
+ * store is not disposed. So no write of this store lands after destroy().
+ * A directory monitor reloads the history when another
  * process changes or deletes history.json, for example "Clear history" in the
  * preferences window.
  */
@@ -48,7 +50,7 @@ export class HistoryStore {
   private readonly saveDelayMs: number;
   private readonly checkDelayMs: number;
   private readonly listeners = new Set<() => void>();
-  private readonly pendingImageIds = new Set<string>();
+  private readonly pendingImages = new Map<string, GLib.Bytes>();
   private lastEtag: string | null = null;
   private saveSourceId = 0;
   private checkSourceId = 0;
@@ -56,7 +58,7 @@ export class HistoryStore {
   private saveAfterWrite = false;
   private checkAfterWrite = false;
   private monitor: Gio.FileMonitor | null = null;
-  private destroyed = false;
+  private disposed = false;
 
   constructor(options: StoreOptions) {
     this.settings = options.settings;
@@ -75,6 +77,7 @@ export class HistoryStore {
   /** Reads history.json, removes orphan image files and starts the directory monitor. */
   load(): void {
     GLib.mkdir_with_parents(this.imagesDir, 0o700);
+    this.deleteFiles(childNames(this.dir).filter((name) => name.startsWith('history.json.') && name.endsWith('.tmp')).map((name) => GLib.build_filenamev([this.dir, name])));
     this.current = this.readHistoryFile();
     this.reconcileImages();
     this.monitor = Gio.File.new_for_path(this.dir).monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, null);
@@ -146,24 +149,19 @@ export class HistoryStore {
     }
   }
 
-  /** Writes a pending change now. */
-  flush(): void {
-    if (this.saveSourceId === 0) {
-      return;
-    }
-    GLib.source_remove(this.saveSourceId);
-    this.saveSourceId = 0;
-    if (this.writing) {
-      // A synchronous write now could be replaced by the older asynchronous one when it completes.
-      this.saveAfterWrite = true;
-    } else {
+  /** Writes the pending changes synchronously. After this, the callbacks of writes in flight do nothing. */
+  destroy(): void {
+    if (this.saveSourceId !== 0 || this.writing) {
+      this.cancelSave();
       this.writeSync();
     }
-  }
-
-  destroy(): void {
-    this.flush();
-    this.destroyed = true;
+    for (const [id, data] of this.pendingImages) {
+      if (this.hasEntry(id)) {
+        this.writeFileSync(this.imagePath(id), data.toArray());
+      }
+    }
+    this.pendingImages.clear();
+    this.disposed = true;
     if (this.checkSourceId !== 0) {
       GLib.source_remove(this.checkSourceId);
       this.checkSourceId = 0;
@@ -201,7 +199,7 @@ export class HistoryStore {
       [, contents, etag] = file.load_contents(null);
     } catch (error) {
       this.lastEtag = null;
-      if (!(error instanceof GLib.Error && error.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND))) {
+      if (!isNotFound(error)) {
         console.error(`Leike: cannot read ${this.historyPath}: ${String(error)}`);
       }
       return emptyHistory;
@@ -226,22 +224,22 @@ export class HistoryStore {
   /** Deletes image files that no entry references, and image entries that have no file. */
   private reconcileImages(): void {
     const fileIds = new Set<string>();
-    const enumerator = Gio.File.new_for_path(this.imagesDir).enumerate_children('standard::name', Gio.FileQueryInfoFlags.NONE, null);
-    for (let info = enumerator.next_file(null); info !== null; info = enumerator.next_file(null)) {
-      const name = info.get_name();
+    for (const name of childNames(this.imagesDir)) {
       if (name.endsWith('.png')) {
         fileIds.add(name.slice(0, -'.png'.length));
+      } else if (name.endsWith('.tmp') && this.pendingImages.size === 0) {
+        // A write that did not complete, for example at a crash.
+        this.deleteFiles([GLib.build_filenamev([this.imagesDir, name])]);
       }
     }
-    enumerator.close(null);
 
     const entryIds = new Set(this.current.entries.filter((entry) => entry.type === 'image').map((entry) => entry.id));
-    const orphans = [...fileIds].filter((id) => !entryIds.has(id) && !this.pendingImageIds.has(id));
+    const orphans = [...fileIds].filter((id) => !entryIds.has(id) && !this.pendingImages.has(id));
     this.deleteFiles(orphans.map((id) => imageFile(this.userDataDir, id)));
 
     let history = this.current;
     for (const id of entryIds) {
-      if (!fileIds.has(id) && !this.pendingImageIds.has(id)) {
+      if (!fileIds.has(id) && !this.pendingImages.has(id)) {
         console.warn(`Leike: image ${id} has no file, removed the entry`);
         history = removeEntry(history, id).history;
       }
@@ -252,22 +250,32 @@ export class HistoryStore {
     }
   }
 
+  private hasEntry(id: string): boolean {
+    return this.current.entries.some((entry) => entry.id === id);
+  }
+
   private writeImage(id: string, data: GLib.Bytes): void {
-    this.pendingImageIds.add(id);
+    this.pendingImages.set(id, data);
     GLib.mkdir_with_parents(this.imagesDir, 0o700);
-    const file = Gio.File.new_for_path(this.imagePath(id));
-    file.replace_contents_bytes_async(data, null, false, createFlags, null, (_file, result) => {
-      this.pendingImageIds.delete(id);
-      try {
-        file.replace_contents_finish(result);
-      } catch (error) {
-        console.error(`Leike: cannot write image ${id}: ${String(error)}`);
+    const path = this.imagePath(id);
+    const temp = tempFile(path);
+    temp.replace_contents_bytes_async(data, null, false, createFlags, null, (_file, result) => {
+      if (this.disposed) {
+        deleteQuietly(temp);
         return;
       }
-      // The entry can go away while the file is written.
-      if (!this.current.entries.some((entry) => entry.id === id)) {
-        this.deleteImages([id]);
+      this.pendingImages.delete(id);
+      try {
+        temp.replace_contents_finish(result);
+        // The entry can go away while the file is written.
+        if (this.hasEntry(id)) {
+          temp.move(Gio.File.new_for_path(path), Gio.FileCopyFlags.OVERWRITE, null, null);
+          return;
+        }
+      } catch (error) {
+        console.error(`Leike: cannot write image ${id}: ${String(error)}`);
       }
+      deleteQuietly(temp);
     });
   }
 
@@ -276,19 +284,11 @@ export class HistoryStore {
   }
 
   private deleteFiles(paths: readonly string[]): void {
-    for (const path of paths) {
-      try {
-        Gio.File.new_for_path(path).delete(null);
-      } catch (error) {
-        if (!(error instanceof GLib.Error && error.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND))) {
-          console.warn(`Leike: cannot delete ${path}: ${String(error)}`);
-        }
-      }
-    }
+    paths.forEach((path) => deleteQuietly(Gio.File.new_for_path(path)));
   }
 
   private scheduleSave(): void {
-    if (this.saveSourceId !== 0 || this.destroyed) {
+    if (this.saveSourceId !== 0 || this.disposed) {
       return;
     }
     this.saveSourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.saveDelayMs, () => {
@@ -310,12 +310,31 @@ export class HistoryStore {
     return encoder.encode(`${JSON.stringify(serializeHistory(this.current))}\n`);
   }
 
-  private writeSync(): void {
+  private writeFileSync(path: string, contents: Uint8Array): void {
+    const temp = tempFile(path);
     try {
-      GLib.mkdir_with_parents(this.dir, 0o700);
-      [, this.lastEtag] = Gio.File.new_for_path(this.historyPath).replace_contents(this.contents(), null, false, createFlags, null);
+      temp.replace_contents(contents, null, false, createFlags, null);
+      temp.move(Gio.File.new_for_path(path), Gio.FileCopyFlags.OVERWRITE, null, null);
     } catch (error) {
-      console.error(`Leike: cannot write ${this.historyPath}: ${String(error)}`);
+      console.error(`Leike: cannot write ${path}: ${String(error)}`);
+      deleteQuietly(temp);
+    }
+  }
+
+  private writeSync(): void {
+    GLib.mkdir_with_parents(this.dir, 0o700);
+    this.writeFileSync(this.historyPath, this.contents());
+    this.lastEtag = this.historyEtag();
+  }
+
+  private historyEtag(): string | null {
+    try {
+      return Gio.File.new_for_path(this.historyPath).query_info('etag::value', Gio.FileQueryInfoFlags.NONE, null).get_etag();
+    } catch (error) {
+      if (isNotFound(error)) {
+        return null;
+      }
+      throw error;
     }
   }
 
@@ -326,22 +345,25 @@ export class HistoryStore {
     }
     this.writing = true;
     GLib.mkdir_with_parents(this.dir, 0o700);
-    const file = Gio.File.new_for_path(this.historyPath);
-    file.replace_contents_bytes_async(new GLib.Bytes(this.contents()), null, false, createFlags, null, (_file, result) => {
+    const temp = tempFile(this.historyPath);
+    temp.replace_contents_bytes_async(new GLib.Bytes(this.contents()), null, false, createFlags, null, (_file, result) => {
+      if (this.disposed) {
+        deleteQuietly(temp);
+        return;
+      }
       this.writing = false;
       try {
-        [, this.lastEtag] = file.replace_contents_finish(result);
+        temp.replace_contents_finish(result);
+        temp.move(Gio.File.new_for_path(this.historyPath), Gio.FileCopyFlags.OVERWRITE, null, null);
+        this.lastEtag = this.historyEtag();
       } catch (error) {
         console.error(`Leike: cannot write ${this.historyPath}: ${String(error)}`);
+        deleteQuietly(temp);
       }
       if (this.saveAfterWrite) {
         this.saveAfterWrite = false;
-        if (this.destroyed) {
-          this.writeSync();
-        } else {
-          this.writeAsync();
-        }
-      } else if (this.checkAfterWrite && !this.destroyed) {
+        this.writeAsync();
+      } else if (this.checkAfterWrite) {
         this.checkAfterWrite = false;
         this.checkExternalChange();
       }
@@ -349,7 +371,7 @@ export class HistoryStore {
   }
 
   private scheduleCheck(): void {
-    if (this.checkSourceId !== 0 || this.destroyed) {
+    if (this.checkSourceId !== 0 || this.disposed) {
       return;
     }
     this.checkSourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.checkDelayMs, () => {
@@ -365,21 +387,44 @@ export class HistoryStore {
 
   /** Reloads when history.json is not the file that the store wrote last. */
   private checkExternalChange(): void {
-    const file = Gio.File.new_for_path(this.historyPath);
-    if (!file.query_exists(null)) {
-      if (this.lastEtag === null) {
-        return;
-      }
-      console.log('Leike: history.json was deleted, cleared the history');
-    } else if (file.query_info('etag::value', Gio.FileQueryInfoFlags.NONE, null).get_etag() === this.lastEtag) {
+    const etag = this.historyEtag();
+    if (etag === this.lastEtag) {
       return;
-    } else {
-      console.log('Leike: history.json was changed by another process, reloaded it');
     }
+    console.log(`Leike: history.json was ${etag === null ? 'deleted' : 'changed'} by another process, reloaded it`);
     this.cancelSave();
     GLib.mkdir_with_parents(this.imagesDir, 0o700);
     this.current = this.readHistoryFile();
     this.reconcileImages();
     this.emitChanged();
   }
+}
+
+function isNotFound(error: unknown): boolean {
+  return error instanceof GLib.Error && error.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND);
+}
+
+function deleteQuietly(file: Gio.File): void {
+  try {
+    file.delete(null);
+  } catch (error) {
+    if (!isNotFound(error)) {
+      console.warn(`Leike: cannot delete ${file.get_path()}: ${String(error)}`);
+    }
+  }
+}
+
+/** A new file name next to the path, so a rename replaces the path atomically. */
+function tempFile(path: string): Gio.File {
+  return Gio.File.new_for_path(`${path}.${GLib.uuid_string_random()}.tmp`);
+}
+
+function childNames(path: string): string[] {
+  const names: string[] = [];
+  const enumerator = Gio.File.new_for_path(path).enumerate_children('standard::name', Gio.FileQueryInfoFlags.NONE, null);
+  for (let info = enumerator.next_file(null); info !== null; info = enumerator.next_file(null)) {
+    names.push(info.get_name());
+  }
+  enumerator.close(null);
+  return names;
 }

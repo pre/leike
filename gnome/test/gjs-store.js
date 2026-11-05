@@ -159,6 +159,38 @@ store.addIncoming({ id: '204-0', image: { width: 1, height: 1, bytes: 10 }, hash
 waitFor('image written after the clear', () => exists(store.imagePath('204-0')));
 store.destroy();
 
+// No write lands after destroy(): a history write and an image write are in flight.
+const listNames = (path) => {
+  const names = [];
+  const children = Gio.File.new_for_path(path).enumerate_children('standard::name', Gio.FileQueryInfoFlags.NONE, null);
+  for (let info = children.next_file(null); info !== null; info = children.next_file(null)) {
+    names.push(info.get_name());
+  }
+  children.close(null);
+  return names.sort();
+};
+store = newStore();
+store.load();
+store.addIncoming({ id: '300-0', text: 'in flight', hash: sha256('in flight'), now: 300 });
+waitFor('history write in flight', () => store.writing);
+store.addIncoming({ id: '301-0', image: { width: 1, height: 1, bytes: 10 }, hash: 'image-6', now: 301 }, pngBytes(7));
+store.destroy();
+check('destroy wrote the newest history', readJson(store.historyPath).entries.map((entry) => entry.id), ['301-0', '300-0', '204-0']);
+check('destroy wrote the image in flight', exists(store.imagePath('301-0')), true);
+const marker = JSON.stringify({ version: 1, entries: [] });
+GLib.file_set_contents(store.historyPath, marker);
+settle(300);
+check('no write after destroy', decoder.decode(GLib.file_get_contents(store.historyPath)[1]), marker);
+check('no temporary files after destroy', [...listNames(dir), ...listNames(store.imagesDir)].filter((name) => name.endsWith('.tmp')), []);
+
+// load() deletes the temporary files of writes that did not complete.
+GLib.file_set_contents(`${store.historyPath}.left.tmp`, 'x');
+GLib.file_set_contents(`${store.imagePath('301-0')}.left.tmp`, 'x');
+store = newStore();
+store.load();
+check('load deleted the temporary files', [...listNames(dir), ...listNames(store.imagesDir)].filter((name) => name.endsWith('.tmp')), []);
+store.destroy();
+
 // A corrupt history.json is kept as history.json.broken-<time>.
 GLib.file_set_contents(store.historyPath, '{not json');
 store = newStore();
