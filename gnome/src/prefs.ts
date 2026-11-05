@@ -3,7 +3,13 @@ import type Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk?version=4.0';
 import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 import { acceleratorLabel, presentCaptureDialog } from './capture-dialog.ts';
-import { conflictSections, findGnomeConflicts, rowConflicts, type RowConflict } from './gnome-conflicts.ts';
+import {
+  conflictSections,
+  findGnomeConflicts,
+  rowConflicts,
+  type KeybindingTables,
+  type RowConflict,
+} from './gnome-conflicts.ts';
 import { gnomeKeybindingSettings, readGnomeKeybindings, removeFromGnome } from './gnome-keybindings.ts';
 import { shortcutActions, type ShortcutAction } from './key-names.ts';
 import { applicationsPage, gnomeNoteGroup, historyPage, resetAllButton, type Watch } from './prefs-groups.ts';
@@ -58,7 +64,7 @@ function shortcutsPage(window: Adw.PreferencesWindow, settings: Gio.Settings, wa
     header_suffix: resetAllButton(window, settings),
   });
   for (const action of shortcutActions) {
-    const { row, refresh } = shortcutRow(window, settings, action, removeConflict);
+    const { row, refresh } = shortcutRow(window, settings, action, { tables: () => gnomeTables, reload: reloadGnome }, removeConflict);
     refreshers.set(action, refresh);
     group.add(row);
   }
@@ -77,6 +83,12 @@ function actionTitle(settings: Gio.Settings, action: ShortcutAction): string {
 }
 
 type GnomeConflict = Extract<RowConflict, { kind: 'gnome' }>;
+
+/** The GNOME keybindings that the page has read, and a way to read them again. */
+interface GnomeTables {
+  readonly tables: () => KeybindingTables;
+  readonly reload: () => void;
+}
 
 /**
  * A red warning button that is visible when the row has conflicts. Its
@@ -135,6 +147,7 @@ function shortcutRow(
   window: Adw.PreferencesWindow,
   settings: Gio.Settings,
   action: ShortcutAction,
+  gnome: GnomeTables,
   removeConflict: (conflict: GnomeConflict) => void,
 ): { row: Adw.ActionRow; refresh: (conflicts: readonly RowConflict[]) => void } {
   const title = actionTitle(settings, action);
@@ -171,11 +184,14 @@ function shortcutRow(
         const other = findConflict(accelerator, action, currentBindings(settings));
         return other === null ? null : actionTitle(settings, other);
       },
-      gnomeConflictsOf: (accelerator) => findGnomeConflicts(accelerator, readGnomeKeybindings()),
-      removeFromGnome: (accelerator, bindings) => bindings.forEach((binding) => removeFromGnome(binding, accelerator)),
+      gnomeConflictsOf: (accelerator) => findGnomeConflicts(accelerator, gnome.tables()),
+      removeFromGnome: (accelerator, bindings) => {
+        bindings.forEach((binding) => removeFromGnome(binding, accelerator));
+        gnome.reload();
+      },
       onSave: (accelerator, mode) => {
         settings.set_strv(action, applyCapture(settings.get_strv(action), accelerator, mode));
-        if (findGnomeConflicts(accelerator, readGnomeKeybindings()).length > 0) {
+        if (findGnomeConflicts(accelerator, gnome.tables()).length > 0) {
           window.add_toast(
             new Adw.Toast({
               title: `GNOME also uses ${acceleratorLabel(accelerator)}, so ${title} may not work.`,
