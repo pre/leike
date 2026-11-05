@@ -30,7 +30,7 @@ const giveUpMs = 2000;
 export class Injector {
   private device: Clutter.VirtualInputDevice | null;
   private pollSourceId = 0;
-  private finishPending: ((sent: boolean) => void) | null = null;
+  private pending: { resolve: (sent: boolean) => void; reject: (error: unknown) => void } | null = null;
 
   constructor(private readonly terminalWmClasses: () => readonly string[]) {
     const seat = Clutter.get_default_backend().get_default_seat();
@@ -41,20 +41,25 @@ export class Injector {
    * Sends the chord of the action to the focused window when no modifier is
    * held. A new call replaces a call that still waits. Gives false when the
    * chord was not sent: the modifiers stayed down for 2 s, a new call came,
-   * or the injector was destroyed.
+   * or the injector was destroyed. Rejects when the chord cannot be sent.
    */
   run(action: ClipboardAction): Promise<boolean> {
     this.cancel();
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       if (this.trySend(action)) {
         resolve(true);
         return;
       }
       const start = GLib.get_monotonic_time();
-      this.finishPending = resolve;
+      this.pending = { resolve, reject };
       this.pollSourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, pollMs, () => {
-        if (this.trySend(action)) {
-          this.finish(true);
+        try {
+          if (this.trySend(action)) {
+            this.finish(true);
+            return GLib.SOURCE_REMOVE;
+          }
+        } catch (error) {
+          this.fail(error);
           return GLib.SOURCE_REMOVE;
         }
         if (GLib.get_monotonic_time() - start > giveUpMs * 1000) {
@@ -86,9 +91,16 @@ export class Injector {
 
   private finish(sent: boolean): void {
     this.pollSourceId = 0;
-    const resolve = this.finishPending;
-    this.finishPending = null;
-    resolve?.(sent);
+    const pending = this.pending;
+    this.pending = null;
+    pending?.resolve(sent);
+  }
+
+  private fail(error: unknown): void {
+    this.pollSourceId = 0;
+    const pending = this.pending;
+    this.pending = null;
+    pending?.reject(error);
   }
 
   private trySend(action: ClipboardAction): boolean {
@@ -99,15 +111,18 @@ export class Injector {
     // Read the window when the keys go out: the focus can change while the injector waits.
     const wmClass = global.display.focus_window?.get_wm_class() ?? null;
     const chord = keysFor(action, wmClass, this.terminalWmClasses());
-    let time = GLib.get_monotonic_time();
-    for (const [name, pressed] of keySequence(chord)) {
-      const keyval = (Clutter as unknown as Record<string, number>)[`KEY_${name}`];
+    // Look up all keys before the first press, so an unknown key cannot leave Ctrl down.
+    const events = keySequence(chord).map(([name, pressed]) => {
+      const keyval = (Clutter as unknown as Record<string, number | undefined>)[`KEY_${name}`];
       if (keyval === undefined) {
         throw new Error(`unknown key ${name}`);
       }
-      this.device.notify_keyval(time++, keyval, pressed ? Clutter.KeyState.PRESSED : Clutter.KeyState.RELEASED);
+      return { keyval, state: pressed ? Clutter.KeyState.PRESSED : Clutter.KeyState.RELEASED };
+    });
+    let time = GLib.get_monotonic_time();
+    for (const { keyval, state } of events) {
+      this.device.notify_keyval(time++, keyval, state);
     }
-    console.log(`Leike: sent ${chord.shift ? 'Ctrl+Shift' : 'Ctrl'}+${chord.key.toUpperCase()} to ${wmClass ?? 'no window'}`);
     return true;
   }
 }
