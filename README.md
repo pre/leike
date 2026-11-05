@@ -4,7 +4,11 @@ Leike keeps a history of your clipboard on GNOME. It has the look and the flow o
 
 Design goal is to be fast and to stay out of the way. Super+C, Super+V and Super+X copy, paste and cut in each application, also in a terminal. The history keeps text and images, and it stays after you log out. One shortcut opens the history: type to filter, move with the arrow keys and press Enter.
 
-Leike is in development. Version 0.1.0 is a skeleton: the extension loads, but it does not do anything yet.
+Leike is in development and has no release yet.
+
+## Screenshots
+
+Screenshots of the popup and the preferences window come here.
 
 ## Default shortcuts
 
@@ -25,19 +29,69 @@ GNOME 46 binds Super+V to the notification list. The preferences window shows th
 
 Node.js is not needed at runtime as GNOME Shell runs the extension.
 
-1. Build the zip (see Build from source), or download `leike@repo.pet.zip` from a GitHub release.
-2. Install Leike as a GNOME extension:
+1. Download `leike@repo.pet.zip` from the [latest GitHub release](https://github.com/pre/leike/releases/latest), or build it from source:
 
    ```sh
-   gnome-extensions install leike@repo.pet.zip
+   npm install
+   npm run pack   # writes leike@repo.pet.zip
    ```
 
-3. Log out and log in again. On Wayland, GNOME Shell loads new extensions only at login.
+2. Install Leike as a GNOME extension. Use `--force` to replace an installed version:
+
+   ```sh
+   gnome-extensions install --force leike@repo.pet.zip
+   ```
+
+3. Log out and log in again. On Wayland, GNOME Shell loads new extension code only at login.
 4. Enable the extension:
 
    ```sh
    gnome-extensions enable leike@repo.pet
    ```
+
+5. At the first enable, Leike opens its preferences window. On the Shortcuts page, click the red sign on the Paste row and then **Remove from GNOME**. GNOME then shows the notification list with Super+M only, and Super+V pastes. You can also do this in a terminal:
+
+   ```sh
+   gsettings set org.gnome.shell.keybindings toggle-message-tray "['<Super>m']"
+   ```
+
+To open the preferences window again, use the Extensions application or `gnome-extensions prefs leike@repo.pet`.
+
+## Settings
+
+The preferences window has three pages:
+
+- **Shortcuts**: the shortcuts for copy, paste, cut and open history. Each row shows a conflict with a GNOME shortcut. Open history has two shortcuts by default. The capture dialog stores Super+AltGr+C as `<Super><Mod5>c`.
+- **History**: the limits and the Clear history button.
+  - Maximum number of entries, 500 by default. When the history is full, Leike removes the oldest entry that is not pinned.
+  - Maximum image size in MiB, 10 by default. Leike does not keep a larger image.
+  - Maximum text size in KiB, 1024 by default. Leike does not keep a larger text. A large text makes each save and each load of the history slow.
+  - Clear history removes all entries and images, also the pinned entries.
+- **Applications**: the terminal list (`terminal-wm-classes`) and the blocked applications (`blocklist-wm-classes`). To see the WM_CLASS of a window, press Alt+F2, type `lg`, press Enter and open the Windows tab.
+
+## How it works
+
+Wayland has no command that tells an application to copy or paste. Leike sends the keys with a virtual keyboard in GNOME Shell. When you press Super+C, Super is still down, and an application does not copy on Super+Ctrl+C. So Leike waits until you release Super and the other modifiers, then it sends Ctrl+C, or Ctrl+Shift+C to a terminal. The wait is usually 100 to 400 ms.
+
+Known limit: release the letter before Super. When you release Super first, the letter key is still down, and GNOME Shell drops the letter that Leike sends. Nothing is copied or pasted. If you hold Super and press C two times, Leike copies one time, when Super goes up.
+
+Leike watches the clipboard in GNOME Shell. It keeps text, images (PNG), links, colors and file lists. When you copy content that is already in the history, the entry moves to the top. Leike does not add the changes that it makes itself.
+
+## Privacy
+
+- Leike does not keep a clipboard change that offers the mime type `x-kde-passwordrules`. Some password managers set this type when they copy a password. Leike checks the type before it reads the content.
+- Leike does not keep a change from an application whose WM_CLASS is in the blocked applications list. Add a password manager that does not set `x-kde-passwordrules` to this list.
+- The history is not encrypted. The files have mode 0600 and the directories 0700, so only your user can read them.
+- The history stays on your computer. Leike does not use the network.
+
+## Data location
+
+The history is in `~/.local/share/leike/` (`$XDG_DATA_HOME/leike/` when `XDG_DATA_HOME` is set):
+
+- `history.json`: the entries. Leike writes it atomically, with a temporary file and a rename.
+- `images/<id>.png`: one file for each image entry.
+
+When `history.json` is not valid, Leike moves it to `history.json.broken-<time>` and starts with an empty history. To remove all history, use Clear history in the preferences window, or delete the directory.
 
 ## Build from source
 
@@ -46,31 +100,39 @@ You need Node.js 22 or later, npm, `glib-compile-schemas`, `gjs` and `zip`.
 ```sh
 npm install
 npm run build   # core with tsc, extension with esbuild, to gnome/dist/
-npm test        # unit tests and the GJS smoke test
+npm test        # unit tests and the GJS tests
 npm run pack    # writes leike@repo.pet.zip
 npm run reload  # packs, installs the zip, disables and enables the extension
 ```
 
 `npm run reload` makes the shell read the schema again, so a new default works at once. The shell keeps the extension and prefs code until the next login.
 
-### Development in a nested shell
+### Test in a headless shell
 
-On Wayland, GNOME Shell loads new extension code only at login. A nested shell runs the new code at once, in a window. Give the nested shell its own data and config directories. Then the install and the settings, for example the list of enabled extensions in dconf, do not change your session:
+On Wayland, GNOME Shell loads new extension code only at login. Do not test Leike in a nested shell (`gnome-shell --nested`). On GNOME 46 the virtual keyboard of a nested shell sends its keys through the Xwayland of your session, so the keys that Leike sends can go to your real windows. Use a headless shell with its own data, config and runtime directories. See `docs/adr/0012-sandbox-tests-in-a-headless-shell.md`.
 
 ```sh
-export XDG_DATA_HOME=$HOME/tmp/leike-nested/data
-export XDG_CONFIG_HOME=$HOME/tmp/leike-nested/config
+sandbox=$HOME/tmp/leike-sandbox
+export XDG_DATA_HOME=$sandbox/data XDG_CONFIG_HOME=$sandbox/config
+export XDG_CACHE_HOME=$sandbox/cache XDG_STATE_HOME=$sandbox/state
+export XDG_RUNTIME_DIR=$sandbox/run XDG_SESSION_ID=leike-sandbox-none
+export GSETTINGS_BACKEND=keyfile GNOME_SHELL_SESSION_MODE=user
+unset DISPLAY WAYLAND_DISPLAY DBUS_SESSION_BUS_ADDRESS SESSION_MANAGER
+mkdir -p "$XDG_RUNTIME_DIR" "$XDG_CONFIG_HOME/glib-2.0/settings" && chmod 700 "$XDG_RUNTIME_DIR"
+cat > "$XDG_CONFIG_HOME/glib-2.0/settings/keyfile" <<'EOF'
+[org/gnome/shell]
+enabled-extensions=['leike@repo.pet']
+disable-user-extensions=false
+
+[org/gnome/desktop/screensaver]
+lock-enabled=false
+EOF
 gnome/install.sh
-dbus-run-session -- gnome-shell --nested --wayland
+dbus-run-session -- gnome-shell --headless --wayland --no-x11 --sm-disable \
+  --mode=user --virtual-monitor 1280x800 --wayland-display=leike-sandbox-0
 ```
 
-In a terminal in the nested shell, enable the extension:
-
-```sh
-gnome-extensions enable leike@repo.pet
-```
-
-Close the nested shell window to stop it. To see the log, start the nested shell from a terminal: the log of the extension comes to that terminal.
+`XDG_SESSION_ID` keeps the headless shell away from the logind session of your real session. The headless shell has no window. Start applications in the same environment with `WAYLAND_DISPLAY=leike-sandbox-0`, and read the log in the terminal. Stop the shell with Ctrl+C.
 
 ### Preview the preferences window
 
@@ -81,10 +143,21 @@ npm run prefs-sandbox         # uses temporary settings, nothing real changes
 
 `gnome/prefs-dev.sh` builds `gnome/dist` and opens `gnome/dist/prefs.js` with `gnome/test/prefs-launcher.js`. The window uses the schema in `gnome/dist/schemas`, not the installed schema.
 
+## Publish a release
+
+```sh
+bin/release-github v1.2.3    # or major, minor or patch
+```
+
+The script makes a draft GitHub release at HEAD, with notes from the conventional commits since the previous `v*` tag. Then it starts `.github/workflows/release.yml`. The workflow runs the tests, writes the version to `version-name` in `metadata.json`, packs `leike@repo.pet.zip` and attaches the zip to the draft. When the build is done, the script opens the draft. Examine the draft and press **Publish release**. Publishing creates the git tag. Then upload the same zip at https://extensions.gnome.org/upload/.
+
+The workflow needs the repository secret `RELEASE_BOT_TOKEN`, a token that can upload release assets. The default `GITHUB_TOKEN` of the workflow is read-only. Use `bin/release-github v1.2.3 --dry-run` to see the notes without a change on GitHub.
+
 ## Repository layout
 
 - `core/`: the clipboard history data transforms, with no GNOME imports. A KDE, Windows or macOS front end can use the same core.
 - `gnome/`: the GNOME Shell extension, the schema in `gnome/schemas/` and the build scripts.
+- `bin/release-github` and `.github/workflows/release.yml`: the release, see Publish a release.
 - `docs/adr/`: the architecture decisions. Read them before you change the architecture.
 
 ## License
