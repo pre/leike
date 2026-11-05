@@ -15,7 +15,7 @@ export type DayKey = (ms: number) => string;
  * type gives all types. The order stays the same.
  */
 export function filterEntries(entries: readonly Entry[], query: string, type: EntryType | null): Entry[] {
-  const needle = query.trim() === '' ? '' : query.toLowerCase();
+  const needle = query.trim().toLowerCase();
   return entries.filter((entry) => {
     if (type !== null && entry.type !== type) {
       return false;

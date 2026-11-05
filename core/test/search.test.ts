@@ -169,3 +169,11 @@ for (const [day, today, expected] of labelCases) {
     assert.equal(label, expected);
   });
 }
+
+test('filterEntries trims the query before it matches', () => {
+  // Act
+  const result = filterEntries(entries, '  goodbye ', null);
+
+  // Assert
+  assert.deepEqual(ids(result), ['5']);
+});
