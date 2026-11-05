@@ -3,7 +3,7 @@
 // $HOME/tmp: only history.json and the PNG files in images/ go away.
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import { clearHistory } from '../build/clear-history.js';
+import { clearHistory, deleteIgnoringMissing } from '../build/clear-history.js';
 
 const tmpRoot = GLib.build_filenamev([GLib.get_home_dir(), 'tmp']);
 GLib.mkdir_with_parents(tmpRoot, 0o755);
@@ -52,6 +52,20 @@ try {
 
   // No data directory at all.
   clearHistory(path('missing'));
+
+  // The extension can delete a file a moment before the preferences window does.
+  write(path('gone.png'));
+  deleteIgnoringMissing(Gio.File.new_for_path(path('gone.png')));
+  expect(!exists(path('gone.png')), 'deleteIgnoringMissing deletes a file');
+  deleteIgnoringMissing(Gio.File.new_for_path(path('gone.png')));
+  let otherError = false;
+  GLib.mkdir_with_parents(path('full', 'child'), 0o755);
+  try {
+    deleteIgnoringMissing(Gio.File.new_for_path(path('full')));
+  } catch {
+    otherError = true;
+  }
+  expect(otherError, 'deleteIgnoringMissing throws other errors');
 } finally {
   removeTree(Gio.File.new_for_path(root));
 }
