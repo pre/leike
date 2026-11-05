@@ -11,8 +11,6 @@ import type { HistoryStore } from './store.ts';
 export class Clipboard {
   private readonly clipboard = St.Clipboard.get_default();
   private ownChange = false;
-  // Holds the data of the last image that Leike put on the clipboard, until the next image.
-  private lastImage: GLib.Bytes | null = null;
   private destroyed = false;
 
   get isOwnChange(): boolean {
@@ -45,8 +43,8 @@ export class Clipboard {
     }
   }
 
+  /** The memory selection source of Mutter takes its own reference to the bytes. */
   setImage(png: GLib.Bytes): void {
-    this.lastImage = png;
     this.ownChange = true;
     try {
       this.clipboard.set_content(St.ClipboardType.CLIPBOARD, 'image/png', png);
@@ -71,6 +69,5 @@ export class Clipboard {
 
   destroy(): void {
     this.destroyed = true;
-    this.lastImage = null;
   }
 }
