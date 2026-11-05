@@ -52,8 +52,18 @@ export interface Settings {
   blocklistWmClasses: readonly string[];
 }
 
+/**
+ * Why addEntry did not store an incoming change:
+ * - empty: no image, and no text or only whitespace
+ * - image-too-large: the image is larger than Settings.maxImageBytes
+ * - blocked-app: the app is on Settings.blocklistWmClasses
+ */
+export type RejectReason = 'empty' | 'image-too-large' | 'blocked-app';
+
 /** A new history, and the images that the platform must delete from disk. */
 export interface HistoryChange {
   history: History;
   deletedImageIds: string[];
+  /** Set when addEntry did not store the incoming change. The history is then unchanged. */
+  rejected?: RejectReason;
 }
