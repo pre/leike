@@ -1,0 +1,10 @@
+{
+  "uuid": "leike@repo.pet",
+  "name": "Leike",
+  "description": "Clipboard history for GNOME with the flow of Raycast and Alfred",
+  "shell-version": [
+    "46"
+  ],
+  "url": "https://github.com/pre/leike",
+  "settings-schema": "org.gnome.shell.extensions.leike"
+}

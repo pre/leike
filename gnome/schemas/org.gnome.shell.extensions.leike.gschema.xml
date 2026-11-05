@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.leike" path="/org/gnome/shell/extensions/leike/">
+    <key name="copy" type="as">
+      <default><![CDATA[['<Super>c']]]></default>
+      <summary>Copy</summary>
+      <description>Sends Ctrl+C to the focused window, or Ctrl+Shift+C when the window is a terminal (see terminal-wm-classes).</description>
+    </key>
+    <key name="paste" type="as">
+      <default><![CDATA[['<Super>v']]]></default>
+      <summary>Paste</summary>
+      <description>Sends Ctrl+V to the focused window, or Ctrl+Shift+V when the window is a terminal (see terminal-wm-classes).</description>
+    </key>
+    <key name="cut" type="as">
+      <default><![CDATA[['<Super>x']]]></default>
+      <summary>Cut</summary>
+      <description>Sends Ctrl+X to the focused window, or Ctrl+Shift+X when the window is a terminal (see terminal-wm-classes).</description>
+    </key>
+    <key name="open-history" type="as">
+      <default><![CDATA[['<Super><Mod5>c', '<Super><Alt>c']]]></default>
+      <summary>Open history</summary>
+      <description>Opens the clipboard history popup. &lt;Mod5&gt; is AltGr on a layout with level3(ralt_switch).</description>
+    </key>
+    <key name="max-entries" type="i">
+      <default>500</default>
+      <summary>Maximum number of entries</summary>
+      <description>When the history has more entries, Leike removes the oldest entry that is not pinned.</description>
+    </key>
+    <key name="max-image-bytes" type="i">
+      <default>10485760</default>
+      <summary>Maximum image size in bytes</summary>
+      <description>Leike does not keep an image that is larger than this number of bytes. The default is 10 MiB.</description>
+    </key>
+    <key name="terminal-wm-classes" type="as">
+      <default><![CDATA[['org.gnome.Terminal', 'gnome-terminal-server', 'org.gnome.Ptyxis', 'org.gnome.Console', 'Alacritty', 'kitty', 'foot', 'org.wezfurlong.wezterm', 'com.mitchellh.ghostty', 'Terminator', 'Tilix']]]></default>
+      <summary>Terminal window classes</summary>
+      <description>The WM_CLASS values of terminal windows. Copy, paste and cut send Ctrl+Shift+C, V and X to these windows, and Ctrl+C, V and X to other windows.</description>
+    </key>
+    <key name="blocklist-wm-classes" type="as">
+      <default><![CDATA[[]]]></default>
+      <summary>Blocked window classes</summary>
+      <description>The WM_CLASS values of applications whose clipboard changes Leike does not keep, for example a password manager.</description>
+    </key>
+    <key name="first-run-done" type="b">
+      <default>false</default>
+      <summary>First run done</summary>
+      <description>True after the extension opened the preferences window at the first enable. The extension opens the window only while this is false.</description>
+    </key>
+  </schema>
+</schemalist>
