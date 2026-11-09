@@ -28,7 +28,7 @@ interface OpenState {
 }
 
 /**
- * The history popup: a modal box in the middle of the current monitor with
+ * The history popup: a modal box in the middle of the focused window's monitor with
  * the search entry on top, the list on the left and the preview on the
  * right. The search entry keeps the key focus. Its key handler moves the
  * list selection, so the user never moves the focus.
@@ -47,7 +47,9 @@ export class HistoryPopup {
       return;
     }
     const { store } = this.services;
-    const monitor = Main.layoutManager.currentMonitor ?? Main.layoutManager.primaryMonitor;
+    // The focused window gets the paste, so the popup opens on its monitor, not on the monitor of the pointer.
+    const focusMonitor = global.display.focus_window?.get_monitor() ?? -1;
+    const monitor = Main.layoutManager.monitors[focusMonitor] ?? Main.layoutManager.currentMonitor ?? Main.layoutManager.primaryMonitor;
     if (!monitor) {
       return;
     }
