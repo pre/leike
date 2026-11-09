@@ -112,9 +112,34 @@ export class HistoryPopup {
     });
     this.state = { backdrop, grab, model, search, filterLabel, list, preview, unsubscribe };
 
+    const stage = global.stage as Clutter.Stage;
     backdrop.connect('button-press-event', (_actor, event: Clutter.Event) => {
-      if ((global.stage as Clutter.Stage).get_event_actor(event) === backdrop) {
+      if (stage.get_event_actor(event) === backdrop) {
         this.close();
+      }
+      return Clutter.EVENT_STOP;
+    });
+
+    // A press on the box itself, not on the entry or a row, drags the box.
+    let drag: { dx: number; dy: number } | null = null;
+    box.connect('button-press-event', (_actor, event: Clutter.Event) => {
+      if (stage.get_event_actor(event) !== box || event.get_button() !== Clutter.BUTTON_PRIMARY) {
+        return Clutter.EVENT_PROPAGATE;
+      }
+      const [x, y] = event.get_coords();
+      drag = { dx: x - box.x, dy: y - box.y };
+      return Clutter.EVENT_STOP;
+    });
+    // Captured, so a row under the pointer cannot take the motion while the box moves.
+    backdrop.connect('captured-event', (_actor, event: Clutter.Event) => {
+      if (drag === null) {
+        return Clutter.EVENT_PROPAGATE;
+      }
+      if (event.type() === Clutter.EventType.BUTTON_RELEASE) {
+        drag = null;
+      } else if (event.type() === Clutter.EventType.MOTION) {
+        const [x, y] = event.get_coords();
+        box.set_position(Math.round(x - drag.dx), Math.round(y - drag.dy));
       }
       return Clutter.EVENT_STOP;
     });
