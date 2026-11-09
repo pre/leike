@@ -59,23 +59,18 @@ export class HistoryPopup {
     const model = new PopupModel(store.history.entries);
     const imagePath = (id: string) => store.imagePath(id);
 
-    const backdrop = new St.Widget({
-      style_class: 'leike-backdrop',
-      reactive: true,
-      layout_manager: new Clutter.BinLayout(),
-      x: monitor.x,
-      y: monitor.y,
-      width: monitor.width,
-      height: monitor.height,
-    });
+    // The backdrop covers all monitors, so a click outside the box on any monitor closes the popup.
+    // The parent modalDialogGroup takes the size of its child and ignores its position, so the backdrop binds to the stage.
+    const backdrop = new St.Widget({ style_class: 'leike-backdrop', reactive: true });
+    backdrop.add_constraint(new Clutter.BindConstraint({ source: global.stage, coordinate: Clutter.BindCoordinate.ALL }));
     const box = new St.BoxLayout({
       style_class: 'modal-dialog leike-popup',
       vertical: true,
       reactive: true,
       width,
       height,
-      x_align: Clutter.ActorAlign.CENTER,
-      y_align: Clutter.ActorAlign.CENTER,
+      x: monitor.x + Math.round((monitor.width - width) / 2),
+      y: monitor.y + Math.round((monitor.height - height) / 2),
     });
     backdrop.add_child(box);
 
