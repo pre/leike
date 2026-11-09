@@ -9,6 +9,7 @@ import {
   maxTextKiBRange,
   mibToBytes,
   removeWmClass,
+  versionLabel,
 } from '../src/prefs-values.ts';
 
 describe('image size', () => {
@@ -62,5 +63,19 @@ describe('addWmClass', () => {
 describe('removeWmClass', () => {
   test('removes only the given WM_CLASS', () => {
     assert.deepEqual(removeWmClass(['kitty', 'foot', 'Tilix'], 'foot'), ['kitty', 'Tilix']);
+  });
+});
+
+describe('versionLabel', () => {
+  test('shows a release version with a v', () => {
+    assert.equal(versionLabel('1.2.3'), 'Leike v1.2.3');
+  });
+
+  test('shows a development build with its commit', () => {
+    assert.equal(versionLabel('git-abcdf12'), 'Leike git-abcdf12');
+  });
+
+  test('shows only the name when the metadata has no version', () => {
+    assert.equal(versionLabel(undefined), 'Leike');
   });
 });

@@ -43,3 +43,14 @@ export function addWmClass(
 export function removeWmClass(list: readonly string[], wmClass: string): string[] {
   return list.filter((value) => value !== wmClass);
 }
+
+/**
+ * The version line of the preferences window. A release has `1.2.3` in
+ * version-name, a local build has `git-<commit>` (see esbuild.mjs).
+ */
+export function versionLabel(versionName: string | undefined): string {
+  if (versionName === undefined) {
+    return 'Leike';
+  }
+  return versionName.startsWith('git-') ? `Leike ${versionName}` : `Leike v${versionName}`;
+}

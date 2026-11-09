@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, cpSync, mkdirSync, rmSync } from 'node:fs';
+import { copyFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { build } from 'esbuild';
 
 const shared = {
@@ -38,7 +38,15 @@ await build({
   external: ['gi://*'],
 });
 
-cpSync('metadata.json', 'dist/metadata.json');
+// The release workflow sets version-name. A local build gets git-<commit>, or no version outside a git checkout.
+const metadata = JSON.parse(readFileSync('metadata.json', 'utf8'));
+if (metadata['version-name'] === undefined) {
+  try {
+    const commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    metadata['version-name'] = `git-${commit}`;
+  } catch {}
+}
+writeFileSync('dist/metadata.json', `${JSON.stringify(metadata, null, 2)}\n`);
 cpSync('stylesheet.css', 'dist/stylesheet.css');
 cpSync('schemas', 'dist/schemas', { recursive: true });
 execFileSync('glib-compile-schemas', ['--strict', 'dist/schemas'], { stdio: 'inherit' });

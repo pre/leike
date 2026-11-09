@@ -13,6 +13,7 @@ import {
 import { gnomeKeybindingSettings, readGnomeKeybindings, removeFromGnome } from './gnome-keybindings.ts';
 import { shortcutActions, type ShortcutAction } from './key-names.ts';
 import { applicationsPage, gnomeNoteGroup, historyPage, resetAllButton, type Watch } from './prefs-groups.ts';
+import { versionLabel } from './prefs-values.ts';
 import { applyCapture, findConflict, shortcutSubtitles } from './shortcuts.ts';
 
 export default class LeikePreferences extends ExtensionPreferences {
@@ -26,6 +27,7 @@ export default class LeikePreferences extends ExtensionPreferences {
     window.add(shortcutsPage(window, settings, watch));
     window.add(historyPage(window, settings, watch));
     window.add(applicationsPage(window, settings, watch));
+    addVersionFooter(window, this.metadata['version-name']);
     window.connect('close-request', () => {
       connections.forEach(({ settings: watched, id }) => watched.disconnect(id));
       return false;
@@ -76,6 +78,26 @@ function shortcutsPage(window: Adw.PreferencesWindow, settings: Gio.Settings, wa
   watch(settings, 'changed', refreshAll);
   gnomeSettings.forEach((gnome) => watch(gnome, 'changed', reloadGnome));
   return page;
+}
+
+/**
+ * Puts the version line under the pages, at 75% of the font size, so that
+ * it is visible on each page without a scroll. PreferencesWindow has no
+ * footer, so the line and the window content go into a new box.
+ */
+function addVersionFooter(window: Adw.PreferencesWindow, versionName: string | undefined): void {
+  const content = window.get_content();
+  if (content === null) {
+    return;
+  }
+  const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+  // set_content takes the content out of the window first, so the box can take it.
+  window.set_content(box);
+  content.vexpand = true;
+  box.append(content);
+  box.append(
+    new Gtk.Label({ label: `<span size="75%">${versionLabel(versionName)}</span>`, use_markup: true, css_classes: ['dim-label'], margin_top: 6, margin_bottom: 6 }),
+  );
 }
 
 function actionTitle(settings: Gio.Settings, action: ShortcutAction): string {

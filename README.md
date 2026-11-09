@@ -71,6 +71,8 @@ The preferences window has three pages:
   - Clear history removes all entries and images, also the pinned entries.
 - **Applications**: the terminal list (`terminal-wm-classes`) and the blocked applications (`blocklist-wm-classes`). To see the WM_CLASS of a window, press Alt+F2, type `lg`, press Enter and open the Windows tab.
 
+The bottom of each page shows the version: `Leike v1.2.3` for a release, or `Leike git-<commit>` for a local build. The release workflow writes the release version to `version-name` in `metadata.json`. In a local build, `gnome/esbuild.mjs` writes `git-<commit>` there.
+
 ## How it works
 
 Wayland has no command that tells an application to copy or paste. Leike sends the keys with a virtual keyboard in GNOME Shell. When you press Super+C, Super is still down, and an application does not copy on Super+Ctrl+C. So Leike waits until you release Super and the other modifiers, then it sends Ctrl+C, or Ctrl+Shift+C to a terminal. The wait is usually 100 to 400 ms.
