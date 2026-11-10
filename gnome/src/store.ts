@@ -36,9 +36,9 @@ const encoder = new TextEncoder();
  * images/<id>.png. Writes are debounced and atomic: an asynchronous write
  * goes to a temporary file, and the main loop renames it only while the
  * store is not disposed. So no write of this store lands after destroy().
- * A directory monitor reloads the history when another
- * process changes or deletes history.json, for example "Clear history" in the
- * preferences window.
+ * A directory monitor reloads the history when another process changes
+ * history.json, and empties it when another process deletes history.json,
+ * which is "Clear history" in the preferences window.
  */
 export class HistoryStore {
   readonly userDataDir: string;
@@ -81,8 +81,13 @@ export class HistoryStore {
     this.current = this.readHistoryFile();
     this.reconcileImages();
     this.monitor = Gio.File.new_for_path(this.dir).monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, null);
-    this.monitor.connect('changed', (_monitor, file, otherFile) => {
+    this.monitor.connect('changed', (_monitor, file, otherFile, event) => {
       if (file.get_basename() === 'history.json' || otherFile?.get_basename() === 'history.json') {
+        // The store replaces history.json with a rename and does not delete it, so a delete
+        // is "Clear history". The history is empty at once: a save that waits writes no old entry.
+        if (event === Gio.FileMonitorEvent.DELETED) {
+          this.clear();
+        }
         this.scheduleCheck();
       }
     });

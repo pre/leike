@@ -213,4 +213,38 @@ check('unsafe id', (() => {
 })(), 'error');
 store.destroy();
 
+// "Clear history" while a save waits. The check of the delete comes after
+// the save here, so only the delete itself can stop the old history.
+const text = (id, value) => ({ id, text: value, hash: sha256(value), now: Number(id.split('-')[0]) });
+const diskIds = () => readJsonOrNull(store.historyPath)?.entries.map((entry) => entry.id) ?? [];
+const userDataDir = GLib.getenv('XDG_DATA_HOME');
+store = new HistoryStore({ settings: () => settings, saveDelayMs: 150, checkDelayMs: 1000 });
+store.load();
+store.addIncoming(text('400-0', 'on the disk'));
+waitFor('the first entry is on the disk', () => diskIds().join() === '400-0');
+store.addIncoming(text('401-0', 'in a save that waits'));
+clearHistory(userDataDir);
+waitFor('a clear while a save waits empties the history', () => ids(store).length === 0, 500);
+settle(300);
+check('the save after a clear writes no old entry', diskIds(), []);
+
+// The same with a write in flight: its file has the old history.
+store.addIncoming(text('402-0', 'on the disk again'));
+waitFor('the entry is on the disk', () => diskIds().join() === '402-0');
+store.addIncoming(text('403-0', 'in a write in flight'));
+waitFor('history write in flight', () => store.writing);
+clearHistory(userDataDir);
+waitFor('a clear while a write is in flight empties the history', () => ids(store).length === 0, 500);
+settle(400);
+check('the disk has no old entry after the write in flight', diskIds(), []);
+
+// destroy() writes the pending changes. After a clear these must not be the old history.
+store.addIncoming(text('404-0', 'on the disk a third time'));
+waitFor('the entry is on the disk', () => diskIds().join() === '404-0');
+store.addIncoming(text('405-0', 'in a second save that waits'));
+clearHistory(userDataDir);
+waitFor('the store sees the clear before destroy', () => ids(store).length === 0, 500);
+store.destroy();
+check('destroy after a clear writes no old entry', diskIds(), []);
+
 print('gjs smoke test passed: store bundle');
