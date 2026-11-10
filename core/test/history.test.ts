@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   addEntry,
   emptyHistory,
+  exceedsTextLimit,
   pruneHistory,
   removeEntry,
   togglePinned,
@@ -218,6 +219,24 @@ test('addEntry accepts text that is exactly at the byte limit', () => {
   // Assert
   assert.equal(change.rejected, undefined);
   assert.deepEqual(ids(change.history), ['t']);
+});
+
+test('exceedsTextLimit is true when the length alone shows that the text is too large', () => {
+  assert.equal(exceedsTextLimit('a'.repeat(101), settings), true);
+  assert.equal(exceedsTextLimit('a'.repeat(100), settings), false);
+  // 51 characters and 101 bytes: the length does not show it, and addEntry counts the bytes.
+  assert.equal(exceedsTextLimit(`${'ä'.repeat(50)}!`, settings), false);
+});
+
+test('addEntry rejects a text over the limit by its length, before it looks at the content', () => {
+  // Arrange: 101 spaces. A look at the content gives "empty".
+  const incoming: Incoming = { id: 'b', text: ' '.repeat(101), hash: 'h', now: 200 };
+
+  // Act
+  const change = addEntry(emptyHistory, incoming, settings);
+
+  // Assert
+  assert.equal(change.rejected, 'text-too-large');
 });
 
 test('addEntry accepts an image that is exactly at the limit', () => {

@@ -1,7 +1,7 @@
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
-import type { AppInfo, Settings } from '@leike/core';
+import { exceedsTextLimit, type AppInfo, type Settings } from '@leike/core';
 import type { Clipboard } from './clipboard.ts';
 import { appInfo, chooseRead, idGenerator, imageIncoming, isBlockedWmClass, pngSize, textIncoming, type ClipboardRead } from './incoming.ts';
 import type { HistoryStore } from './store.ts';
@@ -77,6 +77,11 @@ export class Watcher {
 
     const text = read.mime === 'text/uri-list' ? await this.readUriList() : await this.clipboard.readText();
     if (text === null || this.destroyed) {
+      return;
+    }
+    // The store does not keep such a text, and its hash stops the shell for a text of many megabytes.
+    if (exceedsTextLimit(text, this.settings())) {
+      console.log('Leike: did not keep a clipboard change: text-too-large');
       return;
     }
     const hash = GLib.compute_checksum_for_string(GLib.ChecksumType.SHA256, text, -1);

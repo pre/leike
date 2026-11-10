@@ -92,10 +92,26 @@ function rejectReason(incoming: Incoming, settings: Settings): HistoryChange['re
   if (incoming.image !== undefined) {
     return incoming.image.bytes > settings.maxImageBytes ? 'image-too-large' : undefined;
   }
-  if (incoming.text === undefined || incoming.text.trim() === '') {
+  if (incoming.text === undefined) {
+    return 'empty';
+  }
+  // First, so a very large text costs no trim and no count of its bytes.
+  if (exceedsTextLimit(incoming.text, settings)) {
+    return 'text-too-large';
+  }
+  if (incoming.text.trim() === '') {
     return 'empty';
   }
   return utf8Length(incoming.text) > settings.maxTextBytes ? 'text-too-large' : undefined;
+}
+
+/**
+ * True when the length alone shows that the text is over the limit: each
+ * UTF-16 unit of a string is one UTF-8 byte or more. It does not scan the
+ * text, so it is fast for a text of many megabytes.
+ */
+export function exceedsTextLimit(text: string, settings: Settings): boolean {
+  return text.length > settings.maxTextBytes;
 }
 
 function utf8Length(text: string): number {
