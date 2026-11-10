@@ -100,7 +100,7 @@ The history is in `~/.local/share/leike/` (`$XDG_DATA_HOME/leike/` when `XDG_DAT
 - `history.json`: the entries. Leike writes it atomically, with a temporary file and a rename.
 - `images/<id>.png`: one file for each image entry.
 
-When `history.json` is not valid, Leike moves it to `history.json.broken-<time>` and starts with an empty history. To remove all history, use Clear history in the preferences window, or delete the directory.
+When `history.json` is not valid, Leike moves it to `history.json.broken-<time>` and starts with an empty history. To remove all history, use Clear history in the preferences window, or delete the directory. Clear history also deletes the `history.json.broken-<time>` files.
 
 ## Build from source
 

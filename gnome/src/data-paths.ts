@@ -21,10 +21,27 @@ export function imageFile(userDataDir: string, id: string): string {
   return `${imagesDir(userDataDir)}/${id}.png`;
 }
 
+const brokenHistoryPrefix = 'history.json.broken-';
+
+/** The copy that the store keeps of a history.json that is not valid. `time` makes the name unique. */
+export function brokenHistoryFile(userDataDir: string, time: string): string {
+  return `${dataDir(userDataDir)}/${brokenHistoryPrefix}${time}`;
+}
+
+export interface DirectoryChild {
+  name: string;
+  isRegularFile: boolean;
+}
+
 /**
  * The children of images/ that Clear history deletes: regular PNG files.
  * Links, directories and other files stay.
  */
-export function imageFilesToDelete(children: readonly { name: string; isRegularFile: boolean }[]): string[] {
+export function imageFilesToDelete(children: readonly DirectoryChild[]): string[] {
   return children.filter((child) => child.isRegularFile && /.\.png$/.test(child.name)).map((child) => child.name);
+}
+
+/** The children of the data directory that Clear history deletes: the copies of a history.json that was not valid. */
+export function brokenHistoryFilesToDelete(children: readonly DirectoryChild[]): string[] {
+  return children.filter((child) => child.isRegularFile && child.name.startsWith(brokenHistoryPrefix)).map((child) => child.name);
 }

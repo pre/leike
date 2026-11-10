@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { dataDir, historyFile, imageFile, imageFilesToDelete, imagesDir } from '../src/data-paths.ts';
+import {
+  brokenHistoryFile,
+  brokenHistoryFilesToDelete,
+  dataDir,
+  historyFile,
+  imageFile,
+  imageFilesToDelete,
+  imagesDir,
+} from '../src/data-paths.ts';
 
 describe('data paths', () => {
   test('are under leike in the user data directory', () => {
@@ -39,5 +47,23 @@ describe('imageFilesToDelete', () => {
       { name: 'c.png', isRegularFile: true },
     ];
     assert.deepEqual(imageFilesToDelete(children), ['c.png']);
+  });
+});
+
+describe('brokenHistoryFilesToDelete', () => {
+  test('gives the copy that brokenHistoryFile names', () => {
+    assert.equal(brokenHistoryFile('/d', '20261110T081956'), '/d/leike/history.json.broken-20261110T081956');
+    const children = [{ name: 'history.json.broken-20261110T081956', isRegularFile: true }];
+    assert.deepEqual(brokenHistoryFilesToDelete(children), ['history.json.broken-20261110T081956']);
+  });
+
+  test('skips history.json, directories and other files', () => {
+    const children = [
+      { name: 'history.json', isRegularFile: true },
+      { name: 'history.json.broken-1', isRegularFile: false },
+      { name: 'images', isRegularFile: false },
+      { name: 'notes.txt', isRegularFile: true },
+    ];
+    assert.deepEqual(brokenHistoryFilesToDelete(children), []);
   });
 });

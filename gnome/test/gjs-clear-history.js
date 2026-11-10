@@ -1,6 +1,7 @@
 // Run with: gjs -m test/gjs-clear-history.js (after node esbuild.mjs).
 // Checks clearHistory on real files in a temporary directory under
-// $HOME/tmp: only history.json and the PNG files in images/ go away.
+// $HOME/tmp: only history.json, the copies of a broken history.json and
+// the PNG files in images/ go away.
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import { clearHistory, deleteIgnoringMissing } from '../build/clear-history.js';
@@ -36,8 +37,13 @@ try {
   write(path('normal', 'leike', 'history.json'));
   write(path('normal', 'leike', 'images', 'a.png'));
   write(path('normal', 'leike', 'images', 'notes.txt'));
+  // The store keeps a history.json that is not valid under this name. It has old clipboard text.
+  write(path('normal', 'leike', 'history.json.broken-20261110T081956'));
+  write(path('normal', 'leike', 'notes.txt'));
   clearHistory(path('normal'));
   expect(!exists(path('normal', 'leike', 'history.json')), 'history.json is deleted');
+  expect(!exists(path('normal', 'leike', 'history.json.broken-20261110T081956')), 'the copy of a broken history.json is deleted');
+  expect(exists(path('normal', 'leike', 'notes.txt')), 'another file in the data directory is kept');
   expect(!exists(path('normal', 'leike', 'images', 'a.png')), 'a.png is deleted');
   expect(exists(path('normal', 'leike', 'images', 'notes.txt')), 'notes.txt is kept');
   expect(exists(path('normal', 'leike', 'images', 'sub.png')), 'the subdirectory is kept');

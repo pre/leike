@@ -14,7 +14,7 @@ import {
   type Incoming,
   type Settings,
 } from '@leike/core';
-import { dataDir, historyFile, imageFile, imagesDir } from './data-paths.ts';
+import { brokenHistoryFile, dataDir, historyFile, imageFile, imagesDir } from './data-paths.ts';
 import { isSafeId } from './incoming.ts';
 
 export interface StoreOptions {
@@ -210,7 +210,7 @@ export class HistoryStore {
       return history;
     } catch (error) {
       this.lastEtag = null;
-      const broken = `${this.historyPath}.broken-${GLib.DateTime.new_now_local().format('%Y%m%dT%H%M%S')}`;
+      const broken = brokenHistoryFile(this.userDataDir, GLib.DateTime.new_now_local().format('%Y%m%dT%H%M%S') ?? '');
       console.error(`Leike: ${this.historyPath} is not valid (${String(error)}). Moving it to ${broken}.`);
       try {
         file.move(Gio.File.new_for_path(broken), Gio.FileCopyFlags.OVERWRITE, null, null);
