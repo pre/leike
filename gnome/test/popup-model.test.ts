@@ -12,6 +12,7 @@ import {
   listItems,
   nextTypeFilter,
   PopupModel,
+  popupSize,
   previewLimit,
   previewText,
   renderChunk,
@@ -327,4 +328,18 @@ test('fitSize scales down to fit and never scales up', () => {
   assert.deepEqual(fitSize(500, 1000, 400, 400), [200, 400]);
   assert.deepEqual(fitSize(64, 48, 400, 400), [64, 48]);
   assert.deepEqual(fitSize(0, 0, 400, 400), [0, 0]);
+});
+
+test('popupSize is the same on a small and a large monitor', () => {
+  assert.deepEqual(popupSize(1920, 1200, 1), [1152, 840]);
+  assert.deepEqual(popupSize(3008, 1692, 1), [1152, 840]);
+});
+
+test('popupSize multiplies the size by the scale factor of the shell', () => {
+  assert.deepEqual(popupSize(3840, 2400, 2), [2304, 1680]);
+});
+
+test('popupSize stays in a monitor that is smaller than the popup', () => {
+  assert.deepEqual(popupSize(1024, 768, 1), [1024, 768]);
+  assert.deepEqual(popupSize(1280, 800, 1), [1152, 800]);
 });

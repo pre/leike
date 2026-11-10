@@ -347,3 +347,15 @@ export function fitSize(width: number, height: number, maxWidth: number, maxHeig
   const scale = Math.min(1, maxWidth / width, maxHeight / height);
   return [Math.round(width * scale), Math.round(height * scale)];
 }
+
+const POPUP_WIDTH = 1152;
+const POPUP_HEIGHT = 840;
+
+/**
+ * The size of the history popup in stage pixels: a fixed size, so the popup
+ * does not grow with the monitor. A smaller monitor limits it. `scale` is
+ * the scale factor of the shell theme.
+ */
+export function popupSize(monitorWidth: number, monitorHeight: number, scale: number): [number, number] {
+  return [Math.min(POPUP_WIDTH * scale, monitorWidth), Math.min(POPUP_HEIGHT * scale, monitorHeight)];
+}

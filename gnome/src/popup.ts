@@ -6,7 +6,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import type { Clipboard } from './clipboard.ts';
 import type { Injector } from './injector.ts';
 import { PopupList } from './popup-list.ts';
-import { commandForKey, pageStep, PopupModel, timeFormat, typeFilterLabel, type PopupCommand } from './popup-model.ts';
+import { commandForKey, pageStep, PopupModel, popupSize, timeFormat, typeFilterLabel, type PopupCommand } from './popup-model.ts';
 import { PopupPreview } from './popup-preview.ts';
 import type { HistoryStore } from './store.ts';
 
@@ -54,8 +54,8 @@ export class HistoryPopup {
     if (!monitor) {
       return;
     }
-    const width = Math.round(monitor.width * 0.6);
-    const height = Math.round(monitor.height * 0.7);
+    const scale = St.ThemeContext.get_for_stage(global.stage as Clutter.Stage).scale_factor;
+    const [width, height] = popupSize(monitor.width, monitor.height, scale);
     const time = timeFormat(GLib.TimeZone.new_local().get_identifier());
     const model = new PopupModel(store.history.entries);
     const imagePath = (id: string) => store.imagePath(id);

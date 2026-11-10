@@ -10,7 +10,7 @@ Leike is in development and has no release yet.
 
 ![The Leike history popup](docs/screenshots/popup.png)
 
-The history popup shows the search entry and the type filter on top, the entries by day on the left, and the preview with the Information table on the right.
+The history popup shows the search entry and the type filter on top, the entries by day on the left, and the preview with the Information table on the right. The popup is 1152 × 840 pixels on each monitor. A smaller monitor limits it.
 
 ## Default shortcuts
 
