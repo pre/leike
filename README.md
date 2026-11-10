@@ -104,7 +104,7 @@ When `history.json` is not valid, Leike moves it to `history.json.broken-<time>`
 
 ## Build from source
 
-You need Node.js 22 or later, npm, `glib-compile-schemas`, `gjs` and `zip`.
+You need Node.js 22.18 or later, npm, `glib-compile-schemas`, `gjs` and `zip`. The tests of the GNOME layer run TypeScript files with Node.js directly, and Node.js does that with no flag from version 22.18.
 
 ```sh
 npm install

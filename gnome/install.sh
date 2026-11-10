@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Developer tool: builds the extension and copies it into the user
-# extensions directory, for a test in a nested shell.
+# extensions directory. With XDG_DATA_HOME set to a sandbox directory, the
+# extension goes to a headless test shell: see "Test in a headless shell"
+# in README.md. Do not use a nested shell (docs/adr/0012).
 # End users install the release zip instead, see README.md.
 set -euo pipefail
 
@@ -14,4 +16,5 @@ rm -rf "$target"
 mkdir -p "$target"
 cp -r "$gnome_dir/dist/." "$target/"
 echo "Installed $uuid to $target"
-echo "Log out and in, then run: gnome-extensions enable $uuid"
+echo "GNOME Shell loads it at its next start: start the headless test shell, or log out and in."
+echo "If it is not enabled then, run: gnome-extensions enable $uuid"
