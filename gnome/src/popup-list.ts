@@ -31,7 +31,6 @@ export class PopupList {
   private readonly box: St.BoxLayout;
   private rows: St.Widget[] = [];
   private selected = -1;
-  private lastClick: { index: number; time: number } | null = null;
 
   constructor(
     private readonly imagePath: (id: string) => string,
@@ -134,21 +133,14 @@ export class PopupList {
       }
       return Clutter.EVENT_PROPAGATE;
     });
-    row.connect('button-press-event', (_row, event: Clutter.Event) => {
-      if (event.get_button() !== Clutter.BUTTON_PRIMARY) {
-        return Clutter.EVENT_PROPAGATE;
-      }
-      // Clutter 14 events have no click count.
-      const time = event.get_time();
-      const doubleClick = this.lastClick?.index === index && time - this.lastClick.time <= Clutter.Settings.get_default().double_click_time;
-      this.lastClick = doubleClick ? null : { index, time };
-      if (doubleClick) {
+    // The same click as a GNOME Shell menu item: a press and a release on the row, with no drag between them.
+    const click = new Clutter.ClickAction();
+    click.connect('clicked', () => {
+      if (click.get_button() === Clutter.BUTTON_PRIMARY) {
         this.callbacks.activate(index);
-      } else {
-        this.callbacks.select(index);
       }
-      return Clutter.EVENT_STOP;
     });
+    row.add_action(click);
     return row;
   }
 
