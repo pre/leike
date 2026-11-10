@@ -1,4 +1,5 @@
 import Adw from 'gi://Adw';
+import type Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
@@ -15,6 +16,7 @@ import {
   maxTextKiBRange,
   mibToBytes,
   removeWmClass,
+  rowChanges,
 } from './prefs-values.ts';
 
 /** Connects a handler that the preferences window disconnects when it closes. */
@@ -168,6 +170,32 @@ interface WmClassList {
   readonly description: string;
 }
 
+/** Gives the keyboard focus to the widget. The page does not scroll to it. */
+function focusInPlace(widget: Gtk.Widget): void {
+  const viewport = widget.get_ancestor(Gtk.Viewport.$gtype) as Gtk.Viewport;
+  viewport.scroll_to_focus = false;
+  widget.grab_focus();
+  viewport.scroll_to_focus = true;
+}
+
+/**
+ * Scrolls the page down when a new row moved the widget below the visible
+ * part. GTK places the rows in the layout step of the next frame, so the
+ * check runs after that step.
+ */
+function keepInView(widget: Gtk.Widget): void {
+  const scrolled = widget.get_ancestor(Gtk.ScrolledWindow.$gtype) as Gtk.ScrolledWindow;
+  const clock = widget.get_frame_clock() as Gdk.FrameClock;
+  const id = clock.connect_after('layout', () => {
+    clock.disconnect(id);
+    const [, bounds] = widget.compute_bounds(scrolled);
+    const below = bounds.get_y() + bounds.get_height() - scrolled.get_height();
+    if (below > 0) {
+      scrolled.vadjustment.value += below;
+    }
+  });
+}
+
 /** A list of WM_CLASS values with a remove button on each row and an entry row that adds one. */
 function wmClassGroup(
   window: Adw.PreferencesWindow,
@@ -199,28 +227,51 @@ function wmClassGroup(
     entry.text = '';
   });
 
+  group.add(entry);
+  // The group can add a row only at the end. Its list box can put a row before the entry row.
+  const listBox = entry.get_parent() as Gtk.ListBox;
+
+  const wmClassRow = (wmClass: string): Adw.ActionRow => {
+    const row = new Adw.ActionRow({ title: wmClass, title_selectable: true });
+    const remove = new Gtk.Button({
+      icon_name: 'user-trash-symbolic',
+      tooltip_text: 'Remove',
+      valign: Gtk.Align.CENTER,
+      css_classes: ['flat'],
+    });
+    remove.connect('clicked', () => settings.set_strv(list.key, removeWmClass(settings.get_strv(list.key), wmClass)));
+    row.add_suffix(remove);
+    return row;
+  };
+
+  // Only the rows that change go out and come in, so the entry row keeps the keyboard focus.
   let rows: Adw.ActionRow[] = [];
   const sync = (): void => {
-    rows.forEach((row) => group.remove(row));
-    group.remove(entry);
-    rows = settings.get_strv(list.key).map((wmClass) => {
-      const row = new Adw.ActionRow({ title: wmClass, title_selectable: true });
-      const remove = new Gtk.Button({
-        icon_name: 'user-trash-symbolic',
-        tooltip_text: 'Remove',
-        valign: Gtk.Align.CENTER,
-        css_classes: ['flat'],
-      });
-      remove.connect('clicked', () => settings.set_strv(list.key, removeWmClass(settings.get_strv(list.key), wmClass)));
-      row.add_suffix(remove);
-      return row;
+    const { remove, insert } = rowChanges(
+      rows.map((row) => row.title),
+      settings.get_strv(list.key),
+    );
+    const gone = rows.filter((_, index) => remove.includes(index));
+    gone.forEach((row) => {
+      // GTK gives the focus of a removed row to the first row and scrolls to it. The next row gets it here.
+      const focus = window.get_focus();
+      if (focus === row || focus?.is_ancestor(row)) {
+        focusInPlace(row.get_next_sibling() ?? entry);
+      }
+      listBox.remove(row);
     });
-    rows.forEach((row) => group.add(row));
-    group.add(entry);
+    rows = rows.filter((row) => !gone.includes(row));
+    insert.forEach(([index, wmClass]) => {
+      const row = wmClassRow(wmClass);
+      listBox.insert(row, index);
+      rows.splice(index, 0, row);
+    });
+    if (insert.length > 0 && window.get_focus()?.is_ancestor(entry)) {
+      keepInView(entry);
+    }
     const defaultValue = settings.get_default_value(list.key);
     reset.visible = defaultValue !== null && !settings.get_value(list.key).equal(defaultValue);
   };
-  group.add(entry);
   sync();
   watch(settings, `changed::${list.key}`, sync);
   return group;

@@ -9,6 +9,7 @@ import {
   maxTextKiBRange,
   mibToBytes,
   removeWmClass,
+  rowChanges,
   versionLabel,
 } from '../src/prefs-values.ts';
 
@@ -63,6 +64,51 @@ describe('addWmClass', () => {
 describe('removeWmClass', () => {
   test('removes only the given WM_CLASS', () => {
     assert.deepEqual(removeWmClass(['kitty', 'foot', 'Tilix'], 'foot'), ['kitty', 'Tilix']);
+  });
+});
+
+describe('rowChanges', () => {
+  test('makes one row at the end for an added value and removes nothing', () => {
+    assert.deepEqual(rowChanges(['kitty', 'foot'], ['kitty', 'foot', 'Tilix']), { remove: [], insert: [[2, 'Tilix']] });
+  });
+
+  test('removes only the row of a removed value', () => {
+    assert.deepEqual(rowChanges(['kitty', 'foot', 'Tilix'], ['kitty', 'Tilix']), { remove: [1], insert: [] });
+  });
+
+  test('changes nothing when the rows show the list', () => {
+    assert.deepEqual(rowChanges(['kitty', 'foot'], ['kitty', 'foot']), { remove: [], insert: [] });
+  });
+
+  test('makes all rows for an empty group', () => {
+    assert.deepEqual(rowChanges([], ['kitty', 'foot']), { remove: [], insert: [[0, 'kitty'], [1, 'foot']] });
+  });
+
+  test('keeps the rows that stay in their order when values go and come back', () => {
+    // A reset to the default list: extra goes, kitty and foot come back between the rows that stay.
+    assert.deepEqual(rowChanges(['Alacritty', 'Tilix', 'extra'], ['Alacritty', 'kitty', 'foot', 'Tilix']), {
+      remove: [2],
+      insert: [[1, 'kitty'], [2, 'foot']],
+    });
+  });
+
+  test('makes a row again when its value moves before a row that stays', () => {
+    assert.deepEqual(rowChanges(['kitty', 'foot'], ['foot', 'kitty']), { remove: [1], insert: [[0, 'foot']] });
+  });
+
+  test('gives rows that show the wanted list when the changes are applied', () => {
+    const apply = (shown: string[], wanted: string[]): string[] => {
+      const { remove, insert } = rowChanges(shown, wanted);
+      const rows = shown.filter((_, index) => !remove.includes(index));
+      insert.forEach(([index, value]) => rows.splice(index, 0, value));
+      return rows;
+    };
+    const lists = [[], ['a'], ['a', 'b', 'c'], ['c', 'a', 'b'], ['b', 'd'], ['a', 'a'], ['d', 'c', 'b', 'a']];
+    for (const shown of lists) {
+      for (const wanted of lists) {
+        assert.deepEqual(apply(shown, wanted), wanted, `${JSON.stringify(shown)} to ${JSON.stringify(wanted)}`);
+      }
+    }
   });
 });
 

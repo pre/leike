@@ -45,6 +45,31 @@ export function removeWmClass(list: readonly string[], wmClass: string): string[
 }
 
 /**
+ * The changes that make the rows of a list show the wanted values: the
+ * indexes of the shown rows to remove, then the rows to make with their index
+ * in `wanted`, in rising order. A row that stays is not made again, so it
+ * keeps the keyboard focus and the page keeps its scroll position.
+ */
+export function rowChanges(
+  shown: readonly string[],
+  wanted: readonly string[],
+): { remove: number[]; insert: [index: number, value: string][] } {
+  const remove: number[] = [];
+  const stays = new Set<number>();
+  let next = 0;
+  shown.forEach((value, index) => {
+    const at = wanted.indexOf(value, next);
+    if (at === -1) {
+      remove.push(index);
+    } else {
+      stays.add(at);
+      next = at + 1;
+    }
+  });
+  return { remove, insert: [...wanted.entries()].filter(([index]) => !stays.has(index)) };
+}
+
+/**
  * The version line of the preferences window. A release has `1.2.3` in
  * version-name, a local build has `git-<commit>` (see esbuild.mjs).
  */
