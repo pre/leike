@@ -138,13 +138,15 @@ export class HistoryPopup {
       return Clutter.EVENT_STOP;
     });
     // Captured, so a row under the pointer cannot take the motion while the box moves.
+    // Clutter logs a warning when a handler stops an enter or a leave event.
     backdrop.connect('captured-event', (_actor, event: Clutter.Event) => {
-      if (drag === null) {
+      const type = event.type();
+      if (drag === null || type === Clutter.EventType.ENTER || type === Clutter.EventType.LEAVE) {
         return Clutter.EVENT_PROPAGATE;
       }
-      if (event.type() === Clutter.EventType.BUTTON_RELEASE) {
+      if (type === Clutter.EventType.BUTTON_RELEASE) {
         drag = null;
-      } else if (event.type() === Clutter.EventType.MOTION) {
+      } else if (type === Clutter.EventType.MOTION) {
         const [x, y] = event.get_coords();
         box.set_position(Math.round(x - drag.dx), Math.round(y - drag.dy));
       }
