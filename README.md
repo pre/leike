@@ -116,6 +116,15 @@ npm run reload  # packs, installs the zip, disables and enables the extension
 
 `npm run reload` makes the shell read the schema again, so a new default works at once. The shell keeps the extension and prefs code until the next login.
 
+### Test coverage
+
+```sh
+npm run test:coverage --workspace core
+npm run test:coverage --workspace gnome
+```
+
+The number for the core covers `core/src`. The number for the GNOME layer covers only the modules of `gnome/src` that Node.js can load, which are the modules with no GNOME import. Below its report, the run lists the files that it does not measure. Of these files, `store.ts` and `clear-history.ts` run in the GJS tests (`gnome/test/gjs-*.js`) with no measurement of the coverage. The other files need GNOME Shell or GTK: the extension, the watcher, the clipboard, the injector, the keybindings, the popup and the preferences window. They have no automated test. Test them in a headless shell, as the next section shows.
+
 ### Test in a headless shell
 
 On Wayland, GNOME Shell loads new extension code only at login. Do not test Leike in a nested shell (`gnome-shell --nested`). On GNOME 46 a virtual keyboard in a nested shell sends its keys through the Xwayland of your session, so the keys of a test can go to your real windows. Use a headless shell with its own data, config and runtime directories. See `docs/adr/0012-sandbox-tests-in-a-headless-shell.md`.
