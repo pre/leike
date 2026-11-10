@@ -1,7 +1,7 @@
 import type { AppInfo, ImageInfo, Incoming } from '@leike/core';
 
 /** Password managers offer this mime type. Leike never reads such a change. */
-export const passwordMimeType = 'x-kde-passwordrules';
+export const passwordMimeType = 'x-kde-passwordManagerHint';
 
 export type ClipboardRead = { kind: 'image'; mime: 'image/png' } | { kind: 'text'; mime: string } | { kind: 'skip'; reason: string };
 

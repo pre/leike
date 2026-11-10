@@ -12,8 +12,10 @@ import {
 } from '../src/incoming.ts';
 
 test('chooseRead skips a password manager change before it looks at other types', () => {
-  assert.deepEqual(chooseRead(['x-kde-passwordrules', 'text/plain;charset=utf-8']), { kind: 'skip', reason: 'password' });
-  assert.deepEqual(chooseRead(['image/png', 'x-kde-passwordrules']), { kind: 'skip', reason: 'password' });
+  // The types of a KeePassXC password copy.
+  const keepassxc = ['text/plain', 'text/plain;charset=utf-8', 'UTF8_STRING', 'STRING', 'TEXT', 'x-kde-passwordManagerHint'];
+  assert.deepEqual(chooseRead(keepassxc), { kind: 'skip', reason: 'password' });
+  assert.deepEqual(chooseRead(['image/png', 'x-kde-passwordManagerHint']), { kind: 'skip', reason: 'password' });
 });
 
 test('chooseRead prefers image/png in any position', () => {

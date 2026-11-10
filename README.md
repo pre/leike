@@ -83,8 +83,8 @@ Leike watches the clipboard in GNOME Shell. It keeps text, images (PNG), links, 
 
 ## Privacy
 
-- Leike does not keep a clipboard change that offers the mime type `x-kde-passwordrules`. Some password managers set this type when they copy a password. Leike checks the type before it reads the content.
-- Leike does not keep a change from an application whose WM_CLASS is in the blocked applications list. Add a password manager that does not set `x-kde-passwordrules` to this list.
+- Leike does not keep a clipboard change that offers the mime type `x-kde-passwordManagerHint`. KeePassXC, the Bitwarden desktop application and `wl-copy --sensitive` set this type when they copy a password. Leike checks the type before it reads the content.
+- Leike does not keep a change from an application whose WM_CLASS is in the blocked applications list. Add a password manager that does not set `x-kde-passwordManagerHint` to this list.
 - The history is not encrypted. The files have mode 0600 and the directories 0700, so only your user can read them.
 - The history stays on your computer. Leike does not use the network.
 
