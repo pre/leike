@@ -75,9 +75,14 @@ The bottom of each page shows the version: `Leike v1.2.3` for a release, or `Lei
 
 ## How it works
 
-Wayland has no command that tells an application to copy or paste. Leike sends the keys with a virtual keyboard in GNOME Shell. When you press Super+C, Super is still down, and an application does not copy on Super+Ctrl+C. So Leike waits until you release Super and the other modifiers, then it sends Ctrl+C, or Ctrl+Shift+C to a terminal. The wait is usually 100 to 400 ms.
+Wayland has no command that tells an application to copy or paste. So Leike sends Ctrl+C, or Ctrl+Shift+C to a terminal. When you press Super+C, Super is still down, and an application does not copy on Super+Ctrl+C. GNOME Shell keeps one modifier state for its own shortcuts and one for the application. Leike sends its keys as input method keys, and these change only the state of the application: a Super release, then Ctrl+C, then a Super press. The application copies at the key press, and Super stays down for the next shortcut. Super held with V pressed three times pastes three times, and Super held with C and then V copies and pastes. See `docs/adr/0014-copy-paste-cut-send-forwarded-keys-at-the-key-press.md`.
 
-Known limit: release the letter before Super. When you release Super first, the letter key is still down, and GNOME Shell drops the letter that Leike sends. Nothing is copied or pasted. If you hold Super and press C two times, Leike copies one time, when Super goes up.
+Known limits:
+
+- This works in a Wayland session.
+- A copy, paste or cut shortcut can use Shift, Ctrl, Alt and Super. A shortcut with AltGr does not work.
+- Leike sends the key codes of a PC keyboard for Ctrl and Shift. An XKB option that moves the left Ctrl or the left Shift key, for example Swap Ctrl and Caps Lock, breaks the keys.
+- The letter is correct on each layout when the shortcut uses the letter of its action, as Super+V does for paste. Paste from the popup with Shift+Enter, and a shortcut with a different key, send the key at the QWERTY position of the letter.
 
 Leike watches the clipboard in GNOME Shell. It keeps text, images (PNG), links, colors and file lists. When you copy content that is already in the history, the entry moves to the top. Leike does not add the changes that it makes itself.
 
@@ -113,7 +118,7 @@ npm run reload  # packs, installs the zip, disables and enables the extension
 
 ### Test in a headless shell
 
-On Wayland, GNOME Shell loads new extension code only at login. Do not test Leike in a nested shell (`gnome-shell --nested`). On GNOME 46 the virtual keyboard of a nested shell sends its keys through the Xwayland of your session, so the keys that Leike sends can go to your real windows. Use a headless shell with its own data, config and runtime directories. See `docs/adr/0012-sandbox-tests-in-a-headless-shell.md`.
+On Wayland, GNOME Shell loads new extension code only at login. Do not test Leike in a nested shell (`gnome-shell --nested`). On GNOME 46 a virtual keyboard in a nested shell sends its keys through the Xwayland of your session, so the keys of a test can go to your real windows. Use a headless shell with its own data, config and runtime directories. See `docs/adr/0012-sandbox-tests-in-a-headless-shell.md`.
 
 ```sh
 sandbox=$HOME/tmp/leike-sandbox

@@ -1,128 +1,170 @@
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { keysFor, type ClipboardAction } from '@leike/core';
-import { keySequence } from './key-sequence.ts';
+import { keyCode, keySequence, type KeyEvent, type Modifier, type PressedKey } from './key-sequence.ts';
 
 const M = Clutter.ModifierType;
-const heldModifiers =
-  M.SHIFT_MASK | M.CONTROL_MASK | M.MOD1_MASK | M.MOD3_MASK | M.MOD4_MASK | M.MOD5_MASK | M.SUPER_MASK | M.HYPER_MASK | M.META_MASK;
+const modifierMasks: ReadonlyArray<[Modifier, number]> = [
+  ['Shift', M.SHIFT_MASK],
+  ['Control', M.CONTROL_MASK],
+  ['Alt', M.MOD1_MASK],
+  ['Super', M.MOD4_MASK],
+];
 
 const pollMs = 5;
-const giveUpMs = 2000;
+
+// GNOME Terminal ignores Ctrl+Shift+V in the first milliseconds after it gets the focus and a new clipboard content.
+const refocusDelayMs = 50;
+
+function modifiersIn(mask: number): Modifier[] {
+  return modifierMasks.filter(([, bit]) => (mask & bit) !== 0).map(([modifier]) => modifier);
+}
+
+/** The key press that started an action, and the modifiers that were down at that press. */
+interface KeyPress extends PressedKey {
+  modifiers: Modifier[];
+}
+
+/** The data is a copy, because sendAfterRefocus uses it after the handler of the event. */
+function currentKeyPress(): KeyPress | null {
+  const event = Clutter.get_current_event();
+  if (event?.type() !== Clutter.EventType.KEY_PRESS) {
+    return null;
+  }
+  return { modifiers: modifiersIn(event.get_state()), unicode: event.get_key_unicode(), code: event.get_key_code() };
+}
 
 /**
- * Sends Ctrl+C/V/X, or Ctrl+Shift+C/V/X to a terminal, through a Clutter
- * virtual keyboard.
+ * forward_key does nothing when the input method has no focus, and a window
+ * without a text field gives it none. This focus stands in while the keys go
+ * out. The input method can call these functions, so they must exist.
+ */
+class StandInFocus extends Clutter.InputFocus {
+  static {
+    // The cast is for the type packages only: Clutter and GObject come with different copies of the GObject types.
+    GObject.registerClass({ GTypeName: 'LeikeStandInFocus' }, this as never);
+  }
+
+  override vfunc_request_surrounding(): void {}
+  override vfunc_delete_surrounding(): void {}
+  override vfunc_commit_text(): void {}
+  override vfunc_set_preedit_text(): void {}
+}
+
+/**
+ * Sends Ctrl+C/V/X, or Ctrl+Shift+C/V/X to a terminal, to the focused window
+ * at the key press of the shortcut, while the modifiers of the shortcut are
+ * physically down.
  *
- * Mutter ignores a virtual release of a key that the physical keyboard
- * holds, so the injector cannot release Super for the app. It waits until
- * the user has released all modifiers, then sends the chord.
- *
- * Known gap: when the user releases Super before the letter, the letter is
- * still down when the chord goes out, and Mutter drops the injected press
- * of a key that is down. Nothing is copied then. Mutter has no API that
- * tells if one key is down, so the injector cannot wait for the letter.
- * Ctrl+Insert, Shift+Insert and Shift+Delete would avoid the letter, but
- * Shift+Insert pastes PRIMARY in VTE terminals, and Firefox and VS Code are
- * not tested yet. The injector keeps the letter chords until a test in the
- * real session shows that the gap is a problem.
+ * The keys go out as input method keys (forward_key). Mutter applies such a
+ * key to the modifier state of the application only. So a forwarded Super
+ * release clears Super for the application, and the Mutter shortcuts still
+ * see the physical key. See ADR-0014.
  */
 export class Injector {
-  private device: Clutter.VirtualInputDevice | null;
+  /** The modifiers whose left key the application has from a restore. */
+  private restored: Modifier[] = [];
   private pollSourceId = 0;
-  private pending: { resolve: (sent: boolean) => void; reject: (error: unknown) => void } | null = null;
+  private refocusSourceId = 0;
 
-  constructor(private readonly terminalWmClasses: () => readonly string[]) {
-    const seat = Clutter.get_default_backend().get_default_seat();
-    this.device = seat.create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
+  constructor(private readonly terminalWmClasses: () => readonly string[]) {}
+
+  /** Call it in the handler of the key press of a shortcut. */
+  send(action: ClipboardAction): void {
+    this.forwardChord(action, currentKeyPress());
   }
 
   /**
-   * Sends the chord of the action to the focused window when no modifier is
-   * held. A new call replaces a call that still waits. Gives false when the
-   * chord was not sent: the modifiers stayed down for 2 s, a new call came,
-   * or the injector was destroyed. Rejects when the chord cannot be sent.
+   * For the popup: call it in the key press handler, after Main.popModal.
+   * The window gets the focus and the new clipboard content at that moment,
+   * so the keys go out a moment later.
    */
-  run(action: ClipboardAction): Promise<boolean> {
-    this.cancel();
-    return new Promise((resolve, reject) => {
-      if (this.trySend(action)) {
-        resolve(true);
-        return;
-      }
-      const start = GLib.get_monotonic_time();
-      this.pending = { resolve, reject };
-      this.pollSourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, pollMs, () => {
-        try {
-          if (this.trySend(action)) {
-            this.finish(true);
-            return GLib.SOURCE_REMOVE;
-          }
-        } catch (error) {
-          this.fail(error);
-          return GLib.SOURCE_REMOVE;
-        }
-        if (GLib.get_monotonic_time() - start > giveUpMs * 1000) {
-          console.warn(`Leike: did not send ${action}, a modifier key was still down after ${giveUpMs} ms`);
-          this.finish(false);
-          return GLib.SOURCE_REMOVE;
-        }
-        return GLib.SOURCE_CONTINUE;
-      });
+  sendAfterRefocus(action: ClipboardAction): void {
+    const pressed = currentKeyPress();
+    this.removeRefocusSource();
+    this.refocusSourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, refocusDelayMs, () => {
+      this.refocusSourceId = 0;
+      this.forwardChord(action, pressed);
+      return GLib.SOURCE_REMOVE;
     });
-  }
-
-  /** For the history popup: call it after Main.popModal. It waits for Shift of Shift+Enter to go up. */
-  pasteIntoFocusedWindow(): Promise<boolean> {
-    return this.run('paste');
   }
 
   destroy(): void {
-    this.cancel();
-    this.device = null;
-  }
-
-  private cancel(): void {
+    this.removeRefocusSource();
     if (this.pollSourceId !== 0) {
       GLib.source_remove(this.pollSourceId);
+      this.pollSourceId = 0;
     }
-    this.finish(false);
+    this.releaseRestored(this.restored);
   }
 
-  private finish(sent: boolean): void {
-    this.pollSourceId = 0;
-    const pending = this.pending;
-    this.pending = null;
-    pending?.resolve(sent);
-  }
-
-  private fail(error: unknown): void {
-    this.pollSourceId = 0;
-    const pending = this.pending;
-    this.pending = null;
-    pending?.reject(error);
-  }
-
-  private trySend(action: ClipboardAction): boolean {
-    const [, , mods] = global.get_pointer();
-    if ((mods & heldModifiers) !== 0 || this.device === null) {
-      return false;
+  private removeRefocusSource(): void {
+    if (this.refocusSourceId !== 0) {
+      GLib.source_remove(this.refocusSourceId);
+      this.refocusSourceId = 0;
     }
-    // Read the window when the keys go out: the focus can change while the injector waits.
+  }
+
+  private forwardChord(action: ClipboardAction, pressed: KeyPress | null): void {
+    const down = modifiersIn(global.get_pointer()[2]);
+    // The physical release of a modifier can be in the event queue before the keys of this call.
+    // So each modifier of the key press gets a release, and only those that are down now get a press.
+    const held = pressed?.modifiers ?? down;
     const wmClass = global.display.focus_window?.get_wm_class() ?? null;
     const chord = keysFor(action, wmClass, this.terminalWmClasses());
-    // Look up all keys before the first press, so an unknown key cannot leave Ctrl down.
-    const events = keySequence(chord).map(([name, pressed]) => {
-      const keyval = (Clutter as unknown as Record<string, number | undefined>)[`KEY_${name}`];
-      if (keyval === undefined) {
-        throw new Error(`unknown key ${name}`);
-      }
-      return { keyval, state: pressed ? Clutter.KeyState.PRESSED : Clutter.KeyState.RELEASED };
-    });
-    let time = GLib.get_monotonic_time();
-    for (const { keyval, state } of events) {
-      this.device.notify_keyval(time++, keyval, state);
+    this.forward(keySequence(chord, held, down), pressed);
+
+    this.restored = [...new Set([...this.restored, ...held.filter((modifier) => down.includes(modifier))])];
+    this.watchRestored();
+  }
+
+  /**
+   * The user can hold the right key of a modifier. Its physical release does
+   * not release the left key that the application has from the restore. So
+   * when a restored modifier goes up, the application gets one more release
+   * of the left key.
+   */
+  private watchRestored(): void {
+    if (this.pollSourceId !== 0 || this.restored.length === 0) {
+      return;
     }
-    return true;
+    this.pollSourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, pollMs, () => {
+      const down = modifiersIn(global.get_pointer()[2]);
+      this.releaseRestored(this.restored.filter((modifier) => !down.includes(modifier)));
+      if (this.restored.length > 0) {
+        return GLib.SOURCE_CONTINUE;
+      }
+      this.pollSourceId = 0;
+      return GLib.SOURCE_REMOVE;
+    });
+  }
+
+  private releaseRestored(modifiers: readonly Modifier[]): void {
+    if (modifiers.length === 0) {
+      return;
+    }
+    this.forward(
+      modifiers.map((modifier): KeyEvent => [`${modifier}_L`, false]),
+      null,
+    );
+    this.restored = this.restored.filter((modifier) => !modifiers.includes(modifier));
+  }
+
+  private forward(events: readonly KeyEvent[], pressed: PressedKey | null): void {
+    const inputMethod = Main.inputMethod as Clutter.InputMethod & { currentFocus: Clutter.InputFocus | null };
+    const standIn = inputMethod.currentFocus ? null : new StandInFocus();
+    if (standIn) {
+      inputMethod.focus_in(standIn);
+    }
+    let time = GLib.get_monotonic_time();
+    for (const [name, isPress] of events) {
+      inputMethod.forward_key(Clutter[`KEY_${name}`], keyCode(name, pressed), 0, time++, isPress);
+    }
+    // The keys are in the event queue now, so the focus is not necessary after this.
+    if (standIn) {
+      inputMethod.focus_out();
+    }
   }
 }

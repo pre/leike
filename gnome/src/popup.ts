@@ -276,7 +276,7 @@ export class HistoryPopup {
     }
     const { store, clipboard, injector } = this.services;
     const copied = clipboard.copyEntryToClipboard(entry, store);
-    // The previous window gets the keyboard focus about 1 ms after popModal.
+    // popModal gives the focus back to the previous window.
     this.close();
     if (!copied) {
       console.warn(`Leike: the image file of entry ${entry.id} is missing, nothing was copied`);
@@ -285,7 +285,7 @@ export class HistoryPopup {
     // The watcher skips the own change, so move the entry to the top here.
     store.touch(entry.id);
     if (paste) {
-      injector.pasteIntoFocusedWindow().catch((error: unknown) => console.error(`Leike: cannot paste: ${String(error)}`));
+      injector.sendAfterRefocus('paste');
     }
   }
 

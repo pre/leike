@@ -1,5 +1,4 @@
 import type Gio from 'gi://Gio';
-import type { ClipboardAction } from '@leike/core';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import { Clipboard } from './clipboard.ts';
 import { openPrefsOnFirstRun } from './first-run.ts';
@@ -73,15 +72,11 @@ export default class LeikeExtension extends Extension {
       openPreferences: () => this.openPreferences(),
     });
     this.keybindings = new Keybindings(settings, {
-      copy: () => this.inject('copy'),
-      paste: () => this.inject('paste'),
-      cut: () => this.inject('cut'),
+      copy: () => this.injector?.send('copy'),
+      paste: () => this.injector?.send('paste'),
+      cut: () => this.injector?.send('cut'),
       'open-history': () => this.openHistory(),
     });
     openPrefsOnFirstRun(settings, () => this.openPreferences());
-  }
-
-  private inject(action: ClipboardAction): void {
-    this.injector?.run(action).catch((error: unknown) => console.error(`Leike: cannot send ${action}: ${String(error)}`));
   }
 }

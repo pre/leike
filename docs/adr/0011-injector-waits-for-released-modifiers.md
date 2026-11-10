@@ -1,6 +1,6 @@
 # The injector waits for released modifiers
 
-Status: accepted. Supersedes the Super release in the Consequences of ADR-0004. The decision of ADR-0004, copy, paste and cut with key injection, stays.
+Status: superseded by ADR-0014. It superseded the Super release in the Consequences of ADR-0004.
 
 ADR-0004 said that the injector sends a virtual Super release before Ctrl+C. Mutter ignores a release of a key that the virtual device did not press, and the application gets Ctrl+C with Super still down. Thus the injector polls the seat modifier state (`global.get_pointer()`) every 5 ms. When Shift, Ctrl, Alt, Super, AltGr, Hyper and Meta are all up, it sends Ctrl+C, Ctrl+V or Ctrl+X, or Ctrl+Shift with the letter to a terminal. It reads the WM_CLASS when it sends the keys, not when the shortcut fires. After 2 s it stops and writes a log line. A new shortcut cancels a wait.
 
