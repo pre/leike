@@ -9,16 +9,26 @@ export type ClipboardRead = { kind: 'image'; mime: 'image/png' } | { kind: 'text
 // and only the uri-list gives file:// URIs, which the core classifies as file.
 const textMimeTypes = ['text/uri-list', 'text/plain;charset=utf-8', 'UTF8_STRING', 'text/plain', 'STRING', 'TEXT'];
 
-/** Selects what the watcher reads from the offered mime types. The order of the list does not matter. */
+/**
+ * Selects what the watcher reads from the offered mime types. The order of
+ * the list does not matter.
+ *
+ * image/png is not always an image copy. A spreadsheet or a document offers
+ * its text as HTML and as plain text, and a picture of that text as
+ * image/png: there the text is the content. An image copy does not have
+ * both text forms: a browser offers HTML and no plain text, and an image
+ * viewer offers the file path as plain text and no HTML.
+ */
 export function chooseRead(mimeTypes: readonly string[]): ClipboardRead {
   if (mimeTypes.includes(passwordMimeType)) {
     return { kind: 'skip', reason: 'password' };
   }
-  if (mimeTypes.includes('image/png')) {
+  const textMime = textMimeTypes.find((type) => mimeTypes.includes(type));
+  const isPictureOfText = textMime !== undefined && mimeTypes.includes('text/html');
+  if (mimeTypes.includes('image/png') && !isPictureOfText) {
     return { kind: 'image', mime: 'image/png' };
   }
-  const mime = textMimeTypes.find((type) => mimeTypes.includes(type));
-  return mime === undefined ? { kind: 'skip', reason: 'no-supported-type' } : { kind: 'text', mime };
+  return textMime === undefined ? { kind: 'skip', reason: 'no-supported-type' } : { kind: 'text', mime: textMime };
 }
 
 const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];

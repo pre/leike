@@ -18,8 +18,70 @@ test('chooseRead skips a password manager change before it looks at other types'
   assert.deepEqual(chooseRead(['image/png', 'x-kde-passwordManagerHint']), { kind: 'skip', reason: 'password' });
 });
 
-test('chooseRead prefers image/png in any position', () => {
-  assert.deepEqual(chooseRead(['text/plain', 'image/png']), { kind: 'image', mime: 'image/png' });
+// The mime type lists of image copies, recorded in a GNOME Shell 46 sandbox on 2026-11-10.
+const imageCopies: Record<string, string[]> = {
+  'wl-copy --type image/png': ['image/png'],
+  'Google Chrome 157 and Microsoft Edge 156, Copy image': [
+    'chromium/x-source-url',
+    'chromium/x-internal-source-rfh-token',
+    'image/png',
+    'text/html',
+  ],
+  // The image viewer offers the file path as text with the image.
+  'GNOME Image Viewer 45.3, Ctrl+C': [
+    'application/vnd.portal.files',
+    'application/vnd.portal.filetransfer',
+    'text/uri-list',
+    'text/plain',
+    'text/plain;charset=utf-8',
+    'STRING',
+    'TEXT',
+    'COMPOUND_TEXT',
+    'UTF8_STRING',
+    'image/webp',
+    'image/tiff',
+    'image/bmp',
+    'image/jpeg',
+    'image/png',
+  ],
+  // Not recorded: from the Firefox source (cmd_copyImage copies the image data and HTML, and no text).
+  'Firefox, Copy Image': ['text/html', 'text/_moz_htmlcontext', 'text/_moz_htmlinfo', 'image/png', 'image/jpeg'],
+};
+
+for (const [name, mimes] of Object.entries(imageCopies)) {
+  test(`chooseRead reads the image of the image copy: ${name}`, () => {
+    assert.deepEqual(chooseRead(mimes), { kind: 'image', mime: 'image/png' });
+  });
+}
+
+test('chooseRead reads the text of a spreadsheet cell, which also offers a picture of the cell', () => {
+  // Not recorded: the types of a LibreOffice Calc cell copy from the LibreOffice source, without its application types.
+  const calcCells = [
+    'image/png',
+    'text/html',
+    'text/plain;charset=utf-16',
+    'text/rtf',
+    'text/richtext',
+    'text/plain;charset=utf-8',
+    'UTF8_STRING',
+    'STRING',
+  ];
+  assert.deepEqual(chooseRead(calcCells), { kind: 'text', mime: 'text/plain;charset=utf-8' });
+});
+
+test('chooseRead reads the text of a browser selection with text and an image', () => {
+  // Recorded: Google Chrome 157, Select all and Ctrl+C on a page with an image.
+  const selection = [
+    'text/html',
+    'STRING',
+    'chromium/x-source-url',
+    'TEXT',
+    'text/plain;charset=utf-8',
+    'chromium/x-internal-source-rfh-token',
+    'UTF8_STRING',
+    'text/plain',
+  ];
+  assert.deepEqual(chooseRead(selection), { kind: 'text', mime: 'text/plain;charset=utf-8' });
 });
 
 test('chooseRead takes text/uri-list before plain text', () => {
