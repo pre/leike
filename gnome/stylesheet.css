@@ -24,6 +24,20 @@
   font-weight: bold;
 }
 
+.leike-settings-button {
+  padding: 7px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.leike-settings-button:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.leike-settings-icon {
+  icon-size: 16px;
+}
+
 .leike-list-box {
   padding-right: 6px;
   spacing: 2px;

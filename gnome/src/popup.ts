@@ -14,6 +14,7 @@ export interface PopupServices {
   store: HistoryStore;
   clipboard: Clipboard;
   injector: Injector;
+  openPreferences: () => void;
 }
 
 interface OpenState {
@@ -77,8 +78,20 @@ export class HistoryPopup {
     const header = new St.BoxLayout({ style_class: 'leike-header', x_expand: true });
     const search = new St.Entry({ style_class: 'leike-search', hint_text: 'Search clipboard history', can_focus: true, x_expand: true });
     const filterLabel = new St.Label({ text: typeFilterLabel(model.type), style_class: 'leike-type-filter', y_align: Clutter.ActorAlign.CENTER });
+    const settingsButton = new St.Button({
+      style_class: 'leike-settings-button',
+      child: new St.Icon({ icon_name: 'emblem-system-symbolic', style_class: 'leike-settings-icon' }),
+      accessible_name: 'Preferences',
+      y_align: Clutter.ActorAlign.CENTER,
+    });
+    settingsButton.connect('clicked', () => {
+      // Close first: the modal popup is above all windows and holds the keyboard.
+      this.close();
+      this.services.openPreferences();
+    });
     header.add_child(search);
     header.add_child(filterLabel);
+    header.add_child(settingsButton);
     box.add_child(header);
 
     const body = new St.BoxLayout({ style_class: 'leike-body', x_expand: true, y_expand: true });

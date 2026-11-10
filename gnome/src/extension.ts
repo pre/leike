@@ -66,7 +66,12 @@ export default class LeikeExtension extends Extension {
     this.clipboard = new Clipboard();
     this.watcher = new Watcher(this.clipboard, this.store, coreSettings);
     this.injector = new Injector(() => settings.get_strv('terminal-wm-classes'));
-    this.popup = new HistoryPopup({ store: this.store, clipboard: this.clipboard, injector: this.injector });
+    this.popup = new HistoryPopup({
+      store: this.store,
+      clipboard: this.clipboard,
+      injector: this.injector,
+      openPreferences: () => this.openPreferences(),
+    });
     this.keybindings = new Keybindings(settings, {
       copy: () => this.inject('copy'),
       paste: () => this.inject('paste'),
