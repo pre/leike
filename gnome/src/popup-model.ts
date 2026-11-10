@@ -84,6 +84,11 @@ export class PopupModel {
     this.refilter();
   }
 
+  /** True when a query orders the list by the best match, not by time. */
+  get ranked(): boolean {
+    return this.query.trim() !== '';
+  }
+
   get selectedEntry(): Entry | null {
     return this.visible[this.selected] ?? null;
   }
@@ -155,9 +160,13 @@ export type ListItem = { kind: 'header'; label: string } | { kind: 'entry'; entr
 
 /**
  * The list rows for entries[from, to) with a day header before each day. A
- * slice that continues the day of entries[from - 1] gets no header.
+ * slice that continues the day of entries[from - 1] gets no header. A ranked
+ * list is not in time order, so it has one header on top and no day headers.
  */
-export function listItems(entries: readonly Entry[], from: number, to: number, dayKey: DayKey, todayKey: string): ListItem[] {
+export function listItems(entries: readonly Entry[], from: number, to: number, dayKey: DayKey, todayKey: string, ranked = false): ListItem[] {
+  if (ranked) {
+    return rankedListItems(entries, from, to);
+  }
   const previous = entries[from - 1];
   const previousDay = previous === undefined ? null : dayKey(previous.createdAt);
   const items: ListItem[] = [];
@@ -171,6 +180,12 @@ export function listItems(entries: readonly Entry[], from: number, to: number, d
       index += 1;
     }
   }
+  return items;
+}
+
+function rankedListItems(entries: readonly Entry[], from: number, to: number): ListItem[] {
+  const items: ListItem[] = from === 0 ? [{ kind: 'header', label: 'Best matches' }] : [];
+  entries.slice(from, to).forEach((entry, offset) => items.push({ kind: 'entry', entry, index: from + offset }));
   return items;
 }
 

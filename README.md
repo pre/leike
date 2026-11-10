@@ -21,11 +21,23 @@ The history popup shows the search entry and the type filter on top, the entries
 | Cut           | Super+X                                         | Ctrl+X / Ctrl+Shift+X         |
 | Open history  | Super+AltGr+C (`<Super><Mod5>c`), Super+Alt+C   | opens the popup               |
 
-In the popup: Up and Down move, Page Up and Page Down move by 10, Enter copies, Shift+Enter copies and pastes, Delete removes the entry when the cursor is at the end of the search text, Ctrl+P pins or unpins the entry, Tab and Shift+Tab cycle the type filter, Escape closes. Typing filters. A pointer move selects the row, a click on a row copies it as Enter does, a click outside the popup closes it, a drag on the popup background moves the popup, and the gear button in the top right corner opens the preferences window.
+In the popup: Up and Down move, Page Up and Page Down move by 10, Enter copies, Shift+Enter copies and pastes, Delete removes the entry when the cursor is at the end of the search text, Ctrl+P pins or unpins the entry, Tab and Shift+Tab cycle the type filter, Escape closes. Typing filters the list, see [Search](#search). A pointer move selects the row, a click on a row copies it as Enter does, a click outside the popup closes it, a drag on the popup background moves the popup, and the gear button in the top right corner opens the preferences window.
 
 Leike sends Ctrl+Shift+C, V and X to a terminal and Ctrl+C, V and X to other windows. The WM_CLASS of the focused window selects the keys. The default terminal list is in the setting `terminal-wm-classes`: org.gnome.Terminal, gnome-terminal-server, org.gnome.Ptyxis, org.gnome.Console, Alacritty, kitty, foot, org.wezfurlong.wezterm, com.mitchellh.ghostty, Terminator and Tilix.
 
 GNOME 46 binds Super+V to the notification list. The preferences window shows the conflict and can remove the GNOME binding.
+
+## Search
+
+The search ignores the case of letters. It finds a text that contains the query. It also finds a text that has the characters of the query in the same order with small gaps between them, so `claw` finds `claude --allow`. These characters must be near each other: all of them are in a part of the text that is at most 6 times as long as the query, and in the first 4096 characters of the text. A long text that has the query characters far apart does not match.
+
+While the search has a query, the best match is at the top, under the header "Best matches", and the list has no day headers. The order is:
+
+1. A text that contains the query.
+2. An entry whose application name contains the query. This is how an image matches.
+3. A text that has the query characters with gaps.
+
+In each group, a match at the start of the text or at the start of a word comes first. In the third group, a match with fewer and shorter gaps comes first, and a match near the start of the text comes before a match far into the text. Of two equal matches, the newer entry comes first. A pinned entry has no special place in the results. With an empty search, the list shows all entries, newest first, by day. The type filter also applies during a search. The search does not show which characters matched.
 
 ## Install manually the release zip
 

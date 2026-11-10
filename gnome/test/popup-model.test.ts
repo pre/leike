@@ -214,6 +214,36 @@ test('listItems for a later slice has no header when the day goes on', () => {
   );
 });
 
+test('PopupModel.setQuery puts the best match first and selects it', () => {
+  const model = new PopupModel([entry('a', 'text', { text: 'claude --allow' }), entry('b', 'text', { text: 'the claws' }), entry('c', 'text', { text: 'unrelated' })]);
+  model.move(2);
+  model.setQuery('claw');
+  assert.deepEqual(model.visible.map((item) => item.id), ['b', 'a']);
+  assert.equal(model.selectedEntry?.id, 'b');
+  assert.equal(model.ranked, true);
+  model.setQuery('  ');
+  assert.equal(model.ranked, false);
+});
+
+test('PopupModel.setEntries keeps the selected entry in the ranked list', () => {
+  const model = new PopupModel([entry('a', 'text', { text: 'claude --allow' }), entry('b', 'text', { text: 'the claws' })]);
+  model.setQuery('claw');
+  model.move(1);
+  model.setEntries([entry('new', 'text', { text: 'claw' }), entry('a', 'text', { text: 'claude --allow' }), entry('b', 'text', { text: 'the claws' })]);
+  assert.deepEqual(model.visible.map((item) => item.id), ['new', 'b', 'a']);
+  assert.equal(model.selectedEntry?.id, 'a');
+});
+
+test('listItems for a ranked list has one header and no day headers', () => {
+  const list = [entry('a', 'text', { createdAt: now - 3 * day }), entry('b', 'text', { createdAt: now })];
+  const first = listItems(list, 0, 1, helsinki.dayKey, helsinki.dayKey(now), true);
+  const rest = listItems(list, 1, 2, helsinki.dayKey, helsinki.dayKey(now), true);
+  assert.deepEqual(
+    [...first, ...rest].map((item) => (item.kind === 'header' ? item.label : `${item.index}:${item.entry.id}`)),
+    ['Best matches', '0:a', '1:b'],
+  );
+});
+
 test('rowTitle gives the first line that is not empty', () => {
   assert.equal(rowTitle(entry('a', 'text', { text: '\n\n  first line  \nsecond' })), 'first line');
   assert.equal(rowTitle(entry('a', 'text', { text: '   ' })), '');

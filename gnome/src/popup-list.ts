@@ -25,7 +25,7 @@ export interface ListCallbacks {
   nearEnd: () => void;
 }
 
-/** The left side: entry rows grouped by day, in a scroll view. Builds only the rows of model.rendered. */
+/** The left side: entry rows grouped by day, or ranked for a query, in a scroll view. Builds only the rows of model.rendered. */
 export class PopupList {
   readonly actor: St.ScrollView;
   private readonly box: St.BoxLayout;
@@ -73,7 +73,7 @@ export class PopupList {
     const to = Math.min(model.renderLimit, model.visible.length);
     if (to > this.rows.length) {
       const todayKey = this.time.dayKey(Date.now());
-      for (const item of listItems(model.visible, this.rows.length, to, this.time.dayKey, todayKey)) {
+      for (const item of listItems(model.visible, this.rows.length, to, this.time.dayKey, todayKey, model.ranked)) {
         if (item.kind === 'header') {
           this.box.add_child(new St.Label({ text: item.label, style_class: 'leike-day-header' }));
         } else {
