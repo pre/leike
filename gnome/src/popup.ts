@@ -113,10 +113,17 @@ export class HistoryPopup {
     this.state = { backdrop, grab, model, search, filterLabel, list, preview, unsubscribe };
 
     const stage = global.stage as Clutter.Stage;
+    // A click outside the box closes the popup on the release, so the window below gets no button event.
+    let pressedOutside = false;
     backdrop.connect('button-press-event', (_actor, event: Clutter.Event) => {
-      if (stage.get_event_actor(event) === backdrop) {
+      pressedOutside = stage.get_event_actor(event) === backdrop;
+      return Clutter.EVENT_STOP;
+    });
+    backdrop.connect('button-release-event', (_actor, event: Clutter.Event) => {
+      if (pressedOutside && stage.get_event_actor(event) === backdrop) {
         this.close();
       }
+      pressedOutside = false;
       return Clutter.EVENT_STOP;
     });
 
