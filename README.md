@@ -23,7 +23,7 @@ The history popup shows the search entry and the type filter on top, the entries
 
 In the popup: Up and Down move, Page Up and Page Down move by 10, Enter copies, Shift+Enter copies and pastes, Delete removes the entry when the cursor is at the end of the search text, Ctrl+P pins or unpins the entry, Tab and Shift+Tab cycle the type filter, Escape closes. Typing filters the list, see [Search](#search). A pointer move selects the row, a click on a row copies it as Enter does, a click outside the popup closes it, a drag on the popup background moves the popup, and the gear button in the top right corner opens the preferences window.
 
-Leike sends Ctrl+Shift+C, V and X to a terminal and Ctrl+C, V and X to other windows. The WM_CLASS of the focused window selects the keys. The default terminal list is in the setting `terminal-wm-classes`: org.gnome.Terminal, gnome-terminal-server, org.gnome.Ptyxis, org.gnome.Console, Alacritty, kitty, foot, org.wezfurlong.wezterm, com.mitchellh.ghostty, Terminator and Tilix.
+Leike sends Ctrl+Shift+C, V and X to a terminal and Ctrl+C, V and X to other windows. The WM_CLASS of the focused window selects the keys. The default terminal list is in the setting `terminal-wm-classes`: org.gnome.Terminal, gnome-terminal-server, org.gnome.Ptyxis, org.gnome.Console, Alacritty, kitty, foot, org.wezfurlong.wezterm, com.mitchellh.ghostty, Terminator, Tilix and dev.kukka.Kukka.
 
 GNOME 46 binds Super+V to the notification list. The preferences window shows the conflict and can remove the GNOME binding.
 
