@@ -21,7 +21,7 @@ The history popup shows the search entry and the type filter on top, the entries
 | Cut           | Super+X                                         | Ctrl+X / Ctrl+Shift+X         |
 | Open history  | Super+AltGr+C (`<Super><Mod5>c`), Super+Alt+C   | opens the popup               |
 
-In the popup: Up and Down move, Page Up and Page Down move by 10, Enter copies, Shift+Enter copies and pastes, Delete removes the entry when the cursor is at the end of the search text, Ctrl+P pins or unpins the entry, Tab and Shift+Tab cycle the type filter, Escape closes. Typing filters the list, see [Search](#search). A pointer move selects the row, a click on a row copies it as Enter does, a click outside the popup closes it, a drag on the popup background moves the popup, and the gear button in the top right corner opens the preferences window.
+In the popup: Up and Down move, Page Up and Page Down move by 10, Enter copies the entry and pastes it into the window that had the focus, Shift+Enter only copies, Delete removes the entry when the cursor is at the end of the search text, Ctrl+P pins or unpins the entry, Tab and Shift+Tab cycle the type filter, Escape closes. Typing filters the list, see [Search](#search). A pointer move selects the row, a click on a row copies and pastes it as Enter does, a click outside the popup closes it, a drag on the popup background moves the popup, and the gear button in the top right corner opens the preferences window.
 
 Leike sends Ctrl+Shift+C, V and X to a terminal and Ctrl+C, V and X to other windows. The WM_CLASS of the focused window selects the keys. The default terminal list is in the setting `terminal-wm-classes`: org.gnome.Terminal, gnome-terminal-server, org.gnome.Ptyxis, org.gnome.Console, Alacritty, kitty, foot, org.wezfurlong.wezterm, com.mitchellh.ghostty, Terminator, Tilix and dev.kukka.Kukka.
 
@@ -94,7 +94,7 @@ Known limits:
 - This works in a Wayland session.
 - A copy, paste or cut shortcut can use Shift, Ctrl, Alt and Super. A shortcut with AltGr does not work.
 - Leike sends the key codes of a PC keyboard for Ctrl and Shift. An XKB option that moves the left Ctrl or the left Shift key, for example Swap Ctrl and Caps Lock, breaks the keys.
-- The letter is correct on each layout when the shortcut uses the letter of its action, as Super+V does for paste. Paste from the popup with Shift+Enter, and a shortcut with a different key, send the key at the QWERTY position of the letter.
+- The letter is correct on each layout when the shortcut uses the letter of its action, as Super+V does for paste. Paste from the popup with Enter or a click, and a shortcut with a different key, send the key at the QWERTY position of the letter.
 
 Leike watches the clipboard in GNOME Shell. It keeps text, images (PNG), links, colors and file lists. When you copy content that is already in the history, the entry moves to the top. Leike does not add the changes that it makes itself.
 

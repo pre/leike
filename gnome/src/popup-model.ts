@@ -58,7 +58,7 @@ const deleteKeys = new Set(['Delete', 'KP_Delete']);
  */
 export function commandForKey(key: string, mods: KeyModifiers, searchCursorAtEnd = false): PopupCommand | null {
   if (enterKeys.has(key)) {
-    return mods.shift ? 'paste' : 'copy';
+    return mods.shift ? 'copy' : 'paste';
   }
   if (mods.ctrl) {
     return key.toLowerCase() === 'p' ? 'toggle-pin' : null;

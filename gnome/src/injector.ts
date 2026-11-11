@@ -77,7 +77,7 @@ export class Injector {
   }
 
   /**
-   * For the popup: call it in the key press handler, after Main.popModal.
+   * For the popup: call it in the key press or click handler, after Main.popModal.
    * The window gets the focus and the new clipboard content at that moment,
    * so the keys go out a moment later.
    */

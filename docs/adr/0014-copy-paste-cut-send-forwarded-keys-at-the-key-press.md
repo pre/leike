@@ -18,7 +18,7 @@ The mechanism is the same for all windows. The terminal list of ADR-0004 selects
 - The letter release is last. A Super press that is the last key before the Super release opens the overview.
 - `forward_key` does nothing when the input method has no focus. A window without a text field gives none, so a stand-in `Clutter.InputFocus` takes the focus while the keys go into the event queue.
 - `forward_key` takes a key code, and Mutter has no call for JavaScript that gives the key code of a key name. The letter uses the key code of the pressed key when that key gives the letter, as V in Super+V does on each layout. All other keys use the key codes of a PC keyboard, with the letters at their QWERTY positions.
-- The popup sends the paste of Shift+Enter 50 ms after it closes. The window gets the focus and the new clipboard content at the same moment, and GNOME Terminal ignores Ctrl+Shift+V in the first milliseconds after that (headless shell: 0 of 4 pastes with no delay, 3 of 4 after 2 ms, 4 of 4 after 5 ms and more).
+- The popup sends the paste of Enter or a click 50 ms after it closes. The window gets the focus and the new clipboard content at the same moment, and GNOME Terminal ignores Ctrl+Shift+V in the first milliseconds after that (headless shell: 0 of 4 pastes with no delay, 3 of 4 after 2 ms, 4 of 4 after 5 ms and more).
 
 ## Consequences
 

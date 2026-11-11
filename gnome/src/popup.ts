@@ -99,7 +99,7 @@ export class HistoryPopup {
       select: (index) => this.select(index),
       activate: (index) => {
         this.select(index);
-        this.activate(false);
+        this.activate(true);
       },
       nearEnd: () => this.extendList(),
     });

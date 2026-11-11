@@ -68,9 +68,9 @@ test('commandForKey maps the list keys', () => {
   assert.equal(commandForKey('KP_Down', none), 'down');
   assert.equal(commandForKey('Page_Up', none), 'page-up');
   assert.equal(commandForKey('Page_Down', none), 'page-down');
-  assert.equal(commandForKey('Return', none), 'copy');
-  assert.equal(commandForKey('KP_Enter', none), 'copy');
-  assert.equal(commandForKey('Return', { shift: true, ctrl: false }), 'paste');
+  assert.equal(commandForKey('Return', none), 'paste');
+  assert.equal(commandForKey('KP_Enter', none), 'paste');
+  assert.equal(commandForKey('Return', { shift: true, ctrl: false }), 'copy');
   assert.equal(commandForKey('Delete', none, true), 'remove');
   assert.equal(commandForKey('Tab', none), 'next-type');
   assert.equal(commandForKey('ISO_Left_Tab', { shift: true, ctrl: false }), 'previous-type');
