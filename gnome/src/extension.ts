@@ -62,12 +62,13 @@ export default class LeikeExtension extends Extension {
     this.store = new HistoryStore({ settings: coreSettings });
     this.store.load();
     this.maxEntriesHandlerId = settings.connect('changed::max-entries', () => this.store?.prune());
-    this.clipboard = new Clipboard();
-    this.watcher = new Watcher(this.clipboard, this.store, coreSettings);
-    this.injector = new Injector(() => settings.get_strv('terminal-wm-classes'));
+    const clipboard = new Clipboard();
+    this.clipboard = clipboard;
+    this.watcher = new Watcher(clipboard, this.store, coreSettings);
+    this.injector = new Injector(() => settings.get_strv('terminal-wm-classes'), () => clipboard.content());
     this.popup = new HistoryPopup({
       store: this.store,
-      clipboard: this.clipboard,
+      clipboard,
       injector: this.injector,
       openPreferences: () => this.openPreferences(),
     });

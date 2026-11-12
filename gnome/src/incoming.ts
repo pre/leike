@@ -1,4 +1,4 @@
-import type { AppInfo, ImageInfo, Incoming } from '@leike/core';
+import type { AppInfo, ClipboardContent, ImageInfo, Incoming } from '@leike/core';
 
 /** Password managers offer this mime type. Leike never reads such a change. */
 export const passwordMimeType = 'x-kde-passwordManagerHint';
@@ -29,6 +29,11 @@ export function chooseRead(mimeTypes: readonly string[]): ClipboardRead {
     return { kind: 'image', mime: 'image/png' };
   }
   return textMime === undefined ? { kind: 'skip', reason: 'no-supported-type' } : { kind: 'text', mime: textMime };
+}
+
+/** The content kind for the paste keys. It is an image only when the watcher reads an image. */
+export function contentOf(mimeTypes: readonly string[]): ClipboardContent {
+  return chooseRead(mimeTypes).kind === 'image' ? 'image' : 'text';
 }
 
 const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];

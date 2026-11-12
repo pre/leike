@@ -4,7 +4,7 @@ import type { ShortcutAction } from './key-names.ts';
 /** The text under the title of each shortcut row. */
 export const shortcutSubtitles: Readonly<Record<ShortcutAction, string>> = {
   copy: 'Sends Ctrl+C, or Ctrl+Shift+C to a terminal',
-  paste: 'Sends Ctrl+V, or Ctrl+Shift+V to a terminal',
+  paste: 'Sends Ctrl+V, or Ctrl+Shift+V to a terminal when the clipboard has no image',
   cut: 'Sends Ctrl+X, or Ctrl+Shift+X to a terminal',
   'open-history': 'Opens the clipboard history',
 };

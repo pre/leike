@@ -14,16 +14,18 @@ The history popup shows the search entry and the type filter on top, the entries
 
 ## Default shortcuts
 
-| Action        | Shortcut                                        | Sent to app / terminal        |
-|---------------|-------------------------------------------------|-------------------------------|
-| Copy          | Super+C                                         | Ctrl+C / Ctrl+Shift+C         |
-| Paste         | Super+V                                         | Ctrl+V / Ctrl+Shift+V         |
-| Cut           | Super+X                                         | Ctrl+X / Ctrl+Shift+X         |
-| Open history  | Super+AltGr+C (`<Super><Mod5>c`), Super+Alt+C   | opens the popup               |
+| Action        | Shortcut                                        | Sent to app / terminal                |
+|---------------|-------------------------------------------------|---------------------------------------|
+| Copy          | Super+C                                         | Ctrl+C / Ctrl+Shift+C                 |
+| Paste         | Super+V                                         | Ctrl+V / Ctrl+Shift+V (image: Ctrl+V) |
+| Cut           | Super+X                                         | Ctrl+X / Ctrl+Shift+X                 |
+| Open history  | Super+AltGr+C (`<Super><Mod5>c`), Super+Alt+C   | opens the popup                       |
 
 In the popup: Up and Down move, Page Up and Page Down move by 10, Enter copies the entry and pastes it into the window that had the focus, Shift+Enter only copies, Delete removes the entry when the cursor is at the end of the search text, Ctrl+P pins or unpins the entry, Tab and Shift+Tab cycle the type filter, Escape closes. Typing filters the list, see [Search](#search). A pointer move selects the row, a click on a row copies and pastes it as Enter does, a click outside the popup closes it, a drag on the popup background moves the popup, and the gear button in the top right corner opens the preferences window.
 
 Leike sends Ctrl+Shift+C, V and X to a terminal and Ctrl+C, V and X to other windows. The WM_CLASS of the focused window selects the keys. The default terminal list is in the setting `terminal-wm-classes`: org.gnome.Terminal, gnome-terminal-server, org.gnome.Ptyxis, org.gnome.Console, Alacritty, kitty, foot, org.wezfurlong.wezterm, com.mitchellh.ghostty, Terminator, Tilix and dev.kukka.Kukka.
+
+One exception: when the clipboard has an image, paste sends Ctrl+V also to a terminal. The paste of a terminal gives only text, so Ctrl+Shift+V does nothing with an image. A program in the terminal that accepts images reads the image from the clipboard when it gets Ctrl+V. Other programs do their own Ctrl+V action: Bash and Zsh start a quoted insert, where the next key goes into the command line as it is, and Vim starts a visual block. Leike has no setting for this. A spreadsheet cell that also offers a picture of its text is a text paste. See `docs/adr/0016-image-paste-into-a-terminal-sends-ctrl-v.md`.
 
 GNOME 46 binds Super+V to the notification list. The preferences window shows the conflict and can remove the GNOME binding.
 

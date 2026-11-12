@@ -2,7 +2,7 @@ import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import { keysFor, type ClipboardAction } from '@leike/core';
+import { keysFor, type ClipboardAction, type ClipboardContent } from '@leike/core';
 import { keyCode, keySequence, type KeyEvent, type Modifier, type PressedKey } from './key-sequence.ts';
 
 const M = Clutter.ModifierType;
@@ -56,7 +56,7 @@ class StandInFocus extends Clutter.InputFocus {
 /**
  * Sends Ctrl+C/V/X, or Ctrl+Shift+C/V/X to a terminal, to the focused window
  * at the key press of the shortcut, while the modifiers of the shortcut are
- * physically down.
+ * physically down. A terminal also gets Ctrl+V for an image paste, see keysFor.
  *
  * The keys go out as input method keys (forward_key). Mutter applies such a
  * key to the modifier state of the application only. So a forwarded Super
@@ -69,7 +69,11 @@ export class Injector {
   private pollSourceId = 0;
   private refocusSourceId = 0;
 
-  constructor(private readonly terminalWmClasses: () => readonly string[]) {}
+  /** The injector calls clipboardContent when the keys go out, so it sees the entry that the popup put on the clipboard. */
+  constructor(
+    private readonly terminalWmClasses: () => readonly string[],
+    private readonly clipboardContent: () => ClipboardContent,
+  ) {}
 
   /** Call it in the handler of the key press of a shortcut. */
   send(action: ClipboardAction): void {
@@ -113,7 +117,7 @@ export class Injector {
     // So each modifier of the key press gets a release, and only those that are down now get a press.
     const held = pressed?.modifiers ?? down;
     const wmClass = global.display.focus_window?.get_wm_class() ?? null;
-    const chord = keysFor(action, wmClass, this.terminalWmClasses());
+    const chord = keysFor(action, wmClass, this.terminalWmClasses(), this.clipboardContent());
     this.forward(keySequence(chord, held, down), pressed);
 
     this.restored = [...new Set([...this.restored, ...held.filter((modifier) => down.includes(modifier))])];

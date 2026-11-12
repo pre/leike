@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   appInfo,
   chooseRead,
+  contentOf,
   idGenerator,
   imageIncoming,
   isBlockedWmClass,
@@ -11,9 +12,22 @@ import {
   textIncoming,
 } from '../src/incoming.ts';
 
+// The types of a KeePassXC password copy.
+const keepassxc = ['text/plain', 'text/plain;charset=utf-8', 'UTF8_STRING', 'STRING', 'TEXT', 'x-kde-passwordManagerHint'];
+
+// Not recorded: the types of a LibreOffice Calc cell copy from the LibreOffice source, without its application types.
+const calcCells = [
+  'image/png',
+  'text/html',
+  'text/plain;charset=utf-16',
+  'text/rtf',
+  'text/richtext',
+  'text/plain;charset=utf-8',
+  'UTF8_STRING',
+  'STRING',
+];
+
 test('chooseRead skips a password manager change before it looks at other types', () => {
-  // The types of a KeePassXC password copy.
-  const keepassxc = ['text/plain', 'text/plain;charset=utf-8', 'UTF8_STRING', 'STRING', 'TEXT', 'x-kde-passwordManagerHint'];
   assert.deepEqual(chooseRead(keepassxc), { kind: 'skip', reason: 'password' });
   assert.deepEqual(chooseRead(['image/png', 'x-kde-passwordManagerHint']), { kind: 'skip', reason: 'password' });
 });
@@ -52,21 +66,37 @@ for (const [name, mimes] of Object.entries(imageCopies)) {
   test(`chooseRead reads the image of the image copy: ${name}`, () => {
     assert.deepEqual(chooseRead(mimes), { kind: 'image', mime: 'image/png' });
   });
+
+  test(`contentOf gives image for the image copy, so a paste into a terminal sends Ctrl+V: ${name}`, () => {
+    // Act
+    const content = contentOf(mimes);
+
+    // Assert
+    assert.equal(content, 'image');
+  });
 }
 
 test('chooseRead reads the text of a spreadsheet cell, which also offers a picture of the cell', () => {
-  // Not recorded: the types of a LibreOffice Calc cell copy from the LibreOffice source, without its application types.
-  const calcCells = [
-    'image/png',
-    'text/html',
-    'text/plain;charset=utf-16',
-    'text/rtf',
-    'text/richtext',
-    'text/plain;charset=utf-8',
-    'UTF8_STRING',
-    'STRING',
-  ];
   assert.deepEqual(chooseRead(calcCells), { kind: 'text', mime: 'text/plain;charset=utf-8' });
+});
+
+test('contentOf gives text for a spreadsheet cell that also offers a picture of the cell, so a terminal still gets Ctrl+Shift+V', () => {
+  // Act
+  const content = contentOf(calcCells);
+
+  // Assert
+  assert.equal(content, 'text');
+});
+
+test('contentOf gives text for a password copy, a type that Leike does not read and an empty clipboard', () => {
+  // Arrange
+  const offers = [keepassxc, ['image/jpeg'], []];
+
+  // Act
+  const contents = offers.map(contentOf);
+
+  // Assert
+  assert.deepEqual(contents, ['text', 'text', 'text']);
 });
 
 test('chooseRead reads the text of a browser selection with text and an image', () => {

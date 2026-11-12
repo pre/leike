@@ -1,6 +1,6 @@
 # Copy, paste and cut send keys with a virtual keyboard
 
-Status: accepted. The virtual keyboard device and the Super release in Consequences are superseded by ADR-0014.
+Status: accepted. The virtual keyboard device and the Super release in Consequences are superseded by ADR-0014. The Ctrl+Shift+V of an image paste into a terminal is superseded by ADR-0016.
 
 Wayland has no command that tells another application to copy, paste or cut. Super+C, Super+V and Super+X send Ctrl+C, Ctrl+V and Ctrl+X to the focused window with a Clutter virtual keyboard device. A terminal uses Ctrl+C to stop a process, so a terminal gets Ctrl+Shift+C, Ctrl+Shift+V and Ctrl+Shift+X. The WM_CLASS of the focused window selects the keys. The list of terminal WM_CLASS values is the setting `terminal-wm-classes`.
 

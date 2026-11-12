@@ -1,6 +1,6 @@
 # Copy, paste and cut send forwarded keys at the key press
 
-Status: accepted. Supersedes ADR-0011 and the virtual keyboard device of ADR-0004. The decision of ADR-0004 to send Ctrl+C, Ctrl+V and Ctrl+X, and Ctrl+Shift with the letter to a terminal, stays.
+Status: accepted. Supersedes ADR-0011 and the virtual keyboard device of ADR-0004. The decision of ADR-0004 to send Ctrl+C, Ctrl+V and Ctrl+X, and Ctrl+Shift with the letter to a terminal, stays. ADR-0016 sends Ctrl+V with no Shift for an image paste into a terminal.
 
 With ADR-0011 the keys go out when the user releases Super. The paste shows late, Super held with V pressed three times pastes one time, and Super held with C and then V does not copy.
 

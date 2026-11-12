@@ -1,6 +1,7 @@
 import GLib from 'gi://GLib';
 import St from 'gi://St';
-import type { Entry } from '@leike/core';
+import type { ClipboardContent, Entry } from '@leike/core';
+import { contentOf } from './incoming.ts';
 import type { HistoryStore } from './store.ts';
 
 /**
@@ -15,6 +16,11 @@ export class Clipboard {
 
   get isOwnChange(): boolean {
     return this.ownChange;
+  }
+
+  /** Synchronous, so the keys of a shortcut still go out in its key press handler (ADR-0014). */
+  content(): ClipboardContent {
+    return contentOf(this.clipboard.get_mimetypes(St.ClipboardType.CLIPBOARD));
   }
 
   readText(): Promise<string | null> {

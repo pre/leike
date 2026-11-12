@@ -151,7 +151,8 @@ export function applicationsPage(window: Adw.PreferencesWindow, settings: Gio.Se
       key: 'terminal-wm-classes',
       title: 'Terminal Applications',
       description:
-        'Copy, paste and cut send Ctrl+Shift+C, V and X to these applications, and Ctrl+C, V and X to all other applications.',
+        'Copy, paste and cut send Ctrl+Shift+C, V and X to these applications, and Ctrl+C, V and X to all other applications. ' +
+        'When the clipboard has an image, paste sends Ctrl+V to all applications.',
     }),
   );
   page.add(
